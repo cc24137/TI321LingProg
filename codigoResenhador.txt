@@ -1,1 +1,3 @@
-while true
+)palavraVar):= 1254;
+if (naoSeiOQ)
+    qualquerCoisa while for

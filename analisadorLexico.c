@@ -1,221 +1,9 @@
 #include <stdio.h>
 #include <string.h>
-typedef enum {
-    se, // if
-    senao, // else
-    enquanto, // while
-    quatro, // for - resenha
-    faz, // do
-    constante, // const
-    quebrar, // break
-    vazio, // void
-    wii, // switch - resenha
-    caso, // case
-    retornar, // return
-    caractere, // char
-    inteiro, // int
-    longo, // long
-    curto, // short
-    flutuante, // float
-    duplo, // double
-    continuar, // continue
-    padrao, // default
-    enumeracao, // enum
-    estrutura, // struct
-    uniao, // union
-    externo, // extern
-    irpara, // goto
-    nalinha, // inline
-    registrar, // register
-    assinado, // signed
-    naoassinado, // unsigned
-    tamanhode, // sizeof
-    estatico, // static
-    deftipo, // typedef
-    tipode, // typeof
-    volatil, // volatile
+#include "analisadorLexico.h"
+#include "tipos.h"
+#include "tokens.h"
 
-    programa, // program
-    rotulo, // label
-    tipo, // type
-    variavel, // var
-    procedimento, // procedure
-    funcao, // function
-    inicio, // begin
-    fim, // end
-    atribuicao, // :=
-    entao, // then
-
-    dividir, // div
-    diferente, // <>
-    menorouigual, // <=
-    maiorouigual, // >=
-    e, // and
-    ou, // or
-    nao, // not
-
-    /* Símbolos de 1 caractere movidos para o final */
-    mais, // +
-    menos, // -
-    vezes, // *
-    igual, // =
-    menor, // <
-    maior, // >
-    abreparenteses, // (
-    fechaparenteses, // )
-    abrecolchetes, // [
-    fechacolchetes, // ]
-    virgula, // ,
-    pontoevirgula, // ;
-    doispontos, // :
-    ponto, // .
-
-    numero,
-    identificador
-} token;
-
-token tokens[66] = {
-    se, // if
-    senao, // else
-    enquanto, // while
-    quatro, // for - resenha
-    faz, // do
-    constante, // const
-    quebrar, // break
-    vazio, // void
-    wii, // switch - resenha
-    caso, // case
-    retornar, // return
-    caractere, // char
-    inteiro, // int
-    longo, // long
-    curto, // short
-    flutuante, // float
-    duplo, // double
-    continuar, // continue
-    padrao, // default
-    enumeracao, // enum
-    estrutura, // struct
-    uniao, // union
-    externo, // extern
-    irpara, // goto
-    nalinha, // inline
-    registrar, // register
-    assinado, // signed
-    naoassinado, // unsigned
-    tamanhode, // sizeof
-    estatico, // static
-    deftipo, // typedef
-    tipode, // typeof
-    volatil, // volatile
-
-    programa, // program
-    rotulo, // label
-    tipo, // type
-    variavel, // var
-    procedimento, // procedure
-    funcao, // function
-    inicio, // begin
-    fim, // end
-    atribuicao, // :=
-    entao, // then
-
-    dividir, // div
-    diferente, // <>
-    menorouigual, // <=
-    maiorouigual, // >=
-    e, // and
-    ou, // or
-    nao, // not
-
-    /* Símbolos de 1 caractere movidos para o final */
-    mais, // +
-    menos, // -
-    vezes, // *
-    igual, // =
-    menor, // <
-    maior, // >
-    abreparenteses, // (
-    fechaparenteses, // )
-    abrecolchetes, // [
-    fechacolchetes, // ]
-    virgula, // ,
-    pontoevirgula, // ;
-    doispontos, // :
-    ponto, // .
-
-    numero,
-    identificador
-};
-
-char *palavras[64] = {
-    "if",
-    "else",
-    "while",
-    "for",
-    "do",
-    "const",
-    "break",
-    "void",
-    "switch",
-    "case",
-    "return",
-    "char",
-    "int",
-    "long",
-    "short",
-    "float",
-    "double",
-    "continue",
-    "default",
-    "enum",
-    "struct",
-    "union",
-    "extern",
-    "goto",
-    "inline",
-    "register",
-    "signed",
-    "unsigned",
-    "sizeof",
-    "static",
-    "typedef",
-    "typeof",
-    "volatile",
-    "program",
-    "label",
-    "type",
-    "var",
-    "procedure",
-    "function",
-    "begin",
-    "end",
-    ":=",
-    "then",
-    "div",
-    "<>",
-    "<=",
-    ">=",
-    "and",
-    "or",
-    "not",
-
-    /* Símbolos de 1 caractere movidos para o final */
-    "+",
-    "-",
-    "*",
-    "=",
-    "<",
-    ">",
-    "(", 
-    ")",
-    "[",
-    "]",
-    ",",
-    ";",
-    ":",
-    "."
-};
 
 char ehSimboloInicial(char c){
     return ( c==':' || c=='>' || c=='<');
@@ -277,75 +65,81 @@ int qualNum(char *numero) {
 }
     
 
-int main() {
-    FILE *arquivo = fopen("codigo.txt", "r");
-    if (arquivo == NULL) {
-        printf("Erro ao abrir o arquivo.\n");
-        return 1;
-    }
+anaLexReturn anaLex(FILE* arquivo) {
+
+    anaLexReturn ret;
 
     char string[100];
-    char c;
-    char i;
+    char c = fgetc(arquivo);
+    char i = 0;
 
-    while ((c = fgetc(arquivo)) != EOF) {
-        if (ehSeparador(c)) {
-            continue;
-        }
 
-        // letra inicia palavra reservada e identificador
-        if (ehLetra(c) || c == '_') {
-            string[i++] = c;
-            while ((c = fgetc(arquivo)) != EOF && ehCaracterDePalavra(c)) {
-                string[i++] = c;
-            }
-            string[i] = '\0';
-
-            token t = qualToken(string);
-            printf("Token da palavra '%s': %d\n", string, t);
-            if (t == identificador){
-                printf("identificador encontrado: %s\n", string);
-            }
-
-            i = 0;
-            string[0] = '\0';
-        }
-        
-        // número
-        if (ehNumero(c)) {
-            string[i++] = c;
-            while ((c = fgetc(arquivo)) != EOF && ehNumero(c)) {
-                string[i++] = c;
-            }
-            string[i] = '\0';
-            
-            printf("Token do número %d : %d\n", qualNum(string), numero);
-
-            i = 0;
-            string[0] = '\0';
-        }
-        
-        if (ehSimboloUnico(c)){
-            char s[2] = {c, '\0'};
-            printf("Token de símbolo: %d\n", qualToken(s));
-        }
-        if (ehSimboloInicial(c)){
-            char prox = fgetc(arquivo);
-            char s[2] = {c, prox};
-            token t = qualToken(s);
-            if (t != identificador){
-                printf("Token de símbolo: %d\n", t);
-            }
-            else{
-                s[1] = '\0';
-                token t = qualToken(s);
-                ungetc(prox, arquivo);
-                printf("Token de símbolo: %d\n", t);
-            }
-        }
-
+    if (ehSeparador(c)) {
+        ret.t = -1;
+        return ret;
     }
 
-    fclose(arquivo);
-    return 0;
+    // letra inicia palavra reservada e identificador
+    if (ehLetra(c) || c == '_') {
+        string[i++] = c;
+        while ((c = fgetc(arquivo)) != EOF && ehCaracterDePalavra(c)) {
+            string[i++] = c;
+        }
+        fseek(arquivo, -1, SEEK_CUR);
+        string[i] = '\0';
+
+        token t = qualToken(string);
+        //printf("Token da palavra '%s': %d\n", string, t);
+        if (t == identificador){
+            //printf("identificador encontrado: %s\n", string);
+            strcpy(ret.palavra, string);
+            //printf("O que foi passado para return: %s\n", ret.palavra);
+        }
+        
+        ret.t = t;
+        return ret;
+    }
+    
+    // número
+    if (ehNumero(c)) {
+        string[i++] = c;
+        while ((c = fgetc(arquivo)) != EOF && ehNumero(c)) {
+            string[i++] = c;
+        }
+        fseek(arquivo, -1, SEEK_CUR);
+        string[i] = '\0';
+        
+        //printf("Token do número %d : %d\n", qualNum(string), numero);
+        ret.t = numero;
+        ret.num = qualNum(string);
+        return ret;
+    }
+    
+    if (ehSimboloUnico(c)){
+        char s[2] = {c, '\0'};
+        //printf("Token de símbolo: %d\n", qualToken(s));
+        ret.t = qualToken(s);
+        return ret;
+    }
+    if (ehSimboloInicial(c)){
+        char prox = fgetc(arquivo);
+        char s[2] = {c, prox};
+        token t = qualToken(s);
+        if (t != identificador){
+            //printf("Token de símbolo: %d\n", t);
+            ret.t = t;
+        }
+        else{
+            s[1] = '\0';
+            token t = qualToken(s);
+            ungetc(prox, arquivo);
+            //printf("Token de símbolo: %d\n", t);
+            ret.t = t;
+        }
+        return ret;
+    }
+
+    ret.t = -2;
+    //printf("nao reconheceu nada");
+    return ret;
 }
