@@ -31,6 +31,8 @@ void escreverTokens(FILE *arquivo) {
 }
 
 int main(){
+    printf("inicio do programa main.c\n");
+    fflush(stdout);
     FILE *arquivo = fopen("codigoResenhador.txt", "r");
     if (arquivo == NULL) {
         printf("Erro ao abrir o arquivo.\n");

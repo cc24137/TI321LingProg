@@ -58,7 +58,7 @@ token tokens[67] = {
     /* Símbolos de 1 caractere movidos para o final */
     mais, // +                  50
     menos, // -
-    vezes, // *
+    asterisco, // *
     igual, // =                 53
     menor, // <
     maior, // >

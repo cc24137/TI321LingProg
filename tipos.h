@@ -59,7 +59,7 @@ typedef enum {
     /* Símbolos de 1 caractere movidos para o final */
     mais, // +
     menos, // -
-    vezes, // *
+    asterisco, // *
     igual, // =
     menor, // <
     maior, // >
