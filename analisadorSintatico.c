@@ -4,6 +4,47 @@
 #include "tokens.h"
 #include <stdlib.h>
 
+int compilaBloco(FILE *arquivo) {
+    anaLexReturn token = anaLex(arquivo);
+    
+    if (token.t == rotulo) {
+        while (token.t != pontoevirgula) {
+            token = anaLex(arquivo);
+            if (token.t != numero) {
+                printf("Esperava-se um número!\n");
+                exit(1);
+            }
+            
+            token = anaLex(arquivo);
+            if (token.t != virgula && token.t != pontoevirgula) {
+                printf("Esperava-se uma vírgula ou um ponto e vírgula!\n");
+                exit(1);
+            }
+        }
+    }
+    
+    token = anaLex(arquivo);
+    if (token.t == asterisco || token.t == tipo) {
+        if (token.t == asterisco) {
+            token = anaLex(arquivo);
+            if (token.t != tipo) {
+                printf("Esperava-se um tipo após o asterisco!\n");
+                exit(1);
+            }
+        }
+        
+        while (token.t != identificador) {
+            token = anaLex(arquivo);
+            if (token.t != identificador) {
+                printf("Esperava-se um identificador!\n");
+                exit(1);
+            }
+            // continuar
+        }
+    }
+    
+}
+
 int compilaPrograma (FILE *arquivo)
 {
     anaLexReturn token = anaLex(arquivo);
@@ -51,7 +92,7 @@ int compilaPrograma (FILE *arquivo)
         exit(1);
     }
     
-    //compila_bloco();
+    compilaBloco(arquivo);
     
     token = anaLex(arquivo);
     if (token.t!=ponto)
