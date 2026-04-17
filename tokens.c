@@ -1,7 +1,7 @@
 #include "tokens.h"
 #include "tipos.h"
 
-token tokens[66] = {
+token tokens[67] = {
     se, // if                   0
     senao, // else              1
     enquanto, // while          2
@@ -72,7 +72,8 @@ token tokens[66] = {
     ponto, // .
 
     numero,
-    identificador
+    identificador,
+    fimdearquivo
 };
 
 char *palavras[64] = {

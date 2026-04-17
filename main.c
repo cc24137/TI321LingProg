@@ -2,7 +2,33 @@
 #include <string.h>
 #include "analisadorLexico.h"
 #include "tokens.h"
-//#include "tipos.h"
+#include "analisadorSintatico.h"
+
+void escreverTokens(FILE *arquivo) {
+    anaLexReturn r = anaLex(arquivo);
+    
+    while (r.t != fimdearquivo) {
+        if (r.t == -1) {
+            r = anaLex(arquivo);
+            continue;
+        }
+        if (r.t == -2){
+            fclose(arquivo);
+            return;
+        }
+        if (r.t == numero){
+            printf("Número encontrado: %d \n", r.num);
+        }
+        if (r.t == identificador){
+            printf("Identificador encontrado: '%s' \n", r.palavra);
+        }
+        else {
+            printf("Token %d encontrado: palavra-chave '%s' \n", r.t, palavras[r.t]);
+        }
+        
+        r = anaLex(arquivo);
+    }
+}
 
 int main(){
     FILE *arquivo = fopen("codigoResenhador.txt", "r");
@@ -10,27 +36,9 @@ int main(){
         printf("Erro ao abrir o arquivo.\n");
         return 2;
     }
-    while(fgetc(arquivo) != EOF){
-        fseek(arquivo, -1, SEEK_CUR);
-        anaLexReturn r = anaLex(arquivo);
-        if (r.t == -1) continue;
-        if (r.t == -2){
-            continue;
-            fclose(arquivo);
-            return 1;
-        }
-        if (r.t == numero){
-            printf("Número encontrado: %d \n", r.num);
-            continue;
-        }
-        if (r.t == identificador){
-            printf("Identificador encontrado: '%s' \n", r.palavra);
-            continue;
-        }
-        printf("Token %d encontrado: palavra-chave '%s' \n", r.t, palavras[r.t]);
-    }
+    
+    compilaPrograma(arquivo);
 
     fclose(arquivo);
     return 0;
 }
-

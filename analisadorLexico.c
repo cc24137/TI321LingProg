@@ -72,11 +72,15 @@ anaLexReturn anaLex(FILE* arquivo) {
     char string[100];
     char c = fgetc(arquivo);
     char i = 0;
+    
+    if (c == EOF) {
+        ret.t = fimdearquivo;
+        return ret;
+    }
 
 
     if (ehSeparador(c)) {
-        ret.t = -1;
-        return ret;
+        c = fgetc(arquivo);
     }
 
     // letra inicia palavra reservada e identificador

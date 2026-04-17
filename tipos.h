@@ -73,7 +73,8 @@ typedef enum {
     ponto, // .
 
     numero,
-    identificador
+    identificador,
+    fimdearquivo
 } token;
 
 typedef struct {
