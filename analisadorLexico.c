@@ -4,7 +4,6 @@
 #include "tipos.h"
 #include "tokens.h"
 
-
 char ehSimboloInicial(char c){
     return ( c==':' || c=='>' || c=='<');
 }
@@ -63,7 +62,6 @@ int qualNum(char *numero) {
     }
     return num;
 }
-    
 
 anaLexReturn anaLex(FILE* arquivo) {
 
