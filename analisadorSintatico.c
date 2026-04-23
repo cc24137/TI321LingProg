@@ -83,6 +83,57 @@ int parametrosFormais(FILE *arquivo) {
 }
 
 int fator(FILE *arquivo) {
+    anaLexReturn token = obterToken(arquivo);
+
+    if (token.t == identificador) {
+        token = obterToken(arquivo);
+        
+        while (token.t == abrecolchetes) {
+            do {
+                expressao(arquivo);
+                token = obterToken(arquivo);
+            } while (token.t == virgula);
+
+            if (token.t != fechacolchetes) {
+                printf("Esperava-se fechacolchetes!\n");
+                exit(1);
+            }
+            token = obterToken(arquivo);
+        }
+
+        while (token.t == abreparenteses) {
+            do {
+                expressao(arquivo);
+                token = obterToken(arquivo);
+            } while (token.t == virgula);
+
+            if (token.t != fechaparenteses) {
+                printf("Esperava-se fechaparenteses!\n");
+                exit(1);
+            }
+            token = obterToken(arquivo);
+        }
+        
+        devolverToken(token);
+    } 
+    else if (token.t == numero) {
+    } 
+    else if (token.t == abreparenteses) {
+        expressao(arquivo);
+        token = obterToken(arquivo);
+        if (token.t != fechaparenteses) {
+            printf("Esperava-se fechaparenteses!\n");
+            exit(1);
+        }
+    } 
+    else if (token.t == nao) {
+        fator(arquivo);
+    } 
+    else {
+        printf("Esperava-se um fator valido!\n");
+        exit(1);
+    }
+
     return 0;
 }
 
@@ -103,15 +154,7 @@ int comandoSemRotulo(FILE *arquivo) {
     if (token.t == identificador) {
         
         token = obterToken(arquivo);
-        if (token.t == asterisco || token.t == abrecolchetes) {
-            if (token.t == asterisco) {
-                token = obterToken(arquivo);
-                if (token.t != abrecolchetes) {
-                    printf("Esperava-se uma abrecolchetes!\n");
-                    exit(1);
-                }
-            }   
-            
+        while (token.t == abrecolchetes) {
             token = obterToken(arquivo);
             while (token.t == virgula) {
                 expressao(arquivo);
@@ -122,9 +165,10 @@ int comandoSemRotulo(FILE *arquivo) {
                 printf("Esperava-se fechacolchetes!\n");
                 exit(1);
             }
+            token = obterToken(arquivo);
         }
             
-        else if (token.t == abreparenteses) {
+        if (token.t == abreparenteses) {
             token = obterToken(arquivo);
             while (token.t == virgula) {
                 expressao(arquivo);
@@ -135,11 +179,12 @@ int comandoSemRotulo(FILE *arquivo) {
                 printf("Esperava-se fechaparenteses!\n");
                 exit(1);
             }
+            token = obterToken(arquivo);
         }
         
+        devolverToken(token);
         expressao(arquivo);
 
-        
         token = obterToken(arquivo);
         if (token.t == atribuicao) {
             expressao(arquivo);
@@ -167,6 +212,7 @@ int comandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
             comando(arquivo);
+            token = obterToken(arquivo);
         }
     }
     
@@ -206,12 +252,13 @@ int comandoSemRotulo(FILE *arquivo) {
         printf("Esperava-se um comando sem rótulo válido!\n");
         exit(1);
     }
+    return 0;
 }
 
 int comando(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     if (token.t == numero) {
-        anaLexReturn token = obterToken(arquivo);
+        token = obterToken(arquivo);
         if (token.t != doispontos) {
             printf("Esperava-se dois pontos!\n");
             exit(1);
@@ -250,16 +297,9 @@ int compilaBloco(FILE *arquivo) {
 
     // pelo que entendi esse bloco seguinte é um aliasing. Exemplo:
     // type Identificador = string;
-    // REVISAR ESSE PRA VER SE É ISSO MESMO
+    // REVISAR ESSE PRA VER SE É ISSO mesmo
     token = obterToken(arquivo);
-    if (token.t == asterisco || token.t == tipo) {
-        if (token.t == asterisco) {
-            token = obterToken(arquivo);
-            if (token.t != tipo) {
-                printf("Esperava-se um tipo após o asterisco!\n");
-                exit(1);
-            }
-        }
+    while (token.t == tipo) {
         token = obterToken(arquivo);
         if (token.t != identificador) {
             printf("Esperava-se um identificador!\n");
@@ -297,10 +337,9 @@ int compilaBloco(FILE *arquivo) {
         }
         // leu um token a mais para verificar o fim do while, então volta um passo
          devolverToken(token);
+         token = obterToken(arquivo);
     }
-    else {
-        devolverToken(token);
-    }
+    devolverToken(token);
 
     token = obterToken(arquivo);
     if (token.t == variavel) {
@@ -421,7 +460,7 @@ int compilaBloco(FILE *arquivo) {
     return 0;
 }
 
-int compilaPrograma (FILE *arquivo)
+void compilaPrograma (FILE *arquivo)
 {
     anaLexReturn token = obterToken(arquivo);
 

@@ -12,5 +12,4 @@ int expressao(FILE *arquivo);
 int comandoSemRotulo(FILE *arquivo);
 int comando(FILE *arquivo);
 int compilaBloco(FILE *arquivo);
-
 #endif
