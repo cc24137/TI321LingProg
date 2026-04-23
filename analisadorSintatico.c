@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "analisadorLexico.h"
+#include "analisadorSintatico.h"
 #include "tipos.h"
 #include "tokens.h"
 #include <stdlib.h>
