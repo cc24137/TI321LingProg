@@ -31,7 +31,7 @@ int expressao(FILE *arquivo) {
     return 0;
 }
 
-int comandoSemRotulo(File *arquivo) {
+int comandoSemRotulo(FILE *arquivo) {
     anaLexReturn token = anaLex(arquivo);
     if (token.t == identificador) {
         // dois caminhos
@@ -96,8 +96,8 @@ int comandoSemRotulo(File *arquivo) {
         comando(arquivo);
         
         token = anaLex(arquivo);
-        while (token != fim) {
-            if (token != pontoevirgula) {
+        while (token.t != fim) {
+            if (token.t != pontoevirgula) {
                 printf("Esperava-se ponto e virgula!\n");
                 exit(1);
             }
@@ -329,7 +329,7 @@ int compilaBloco(FILE *arquivo) {
             exit(1);
         }
 
-        compilaBloco();
+        compilaBloco(arquivo);
 
         token = anaLex(arquivo);
         if (token.t != pontoevirgula) {
