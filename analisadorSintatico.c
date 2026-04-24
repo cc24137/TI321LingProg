@@ -153,11 +153,8 @@ int termo(FILE *arquivo) {
 int expressaoSimples(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     
-    if (token.t == mais || token.t == menos) {
-        token = obterToken(arquivo);
-    }
-    else {
-        devolverToken(token);
+    if (token.t != mais && token.t != menos) {
+       devolverToken(token);
     }
     
     termo(arquivo);
@@ -219,7 +216,6 @@ int comandoSemRotulo(FILE *arquivo) {
         }
         
         devolverToken(token);
-        expressao(arquivo);
 
         token = obterToken(arquivo);
         if (token.t == atribuicao) {
@@ -371,9 +367,6 @@ int compilaBloco(FILE *arquivo) {
             // le token em avanço para verificar fim do while
             token = obterToken(arquivo);
         }
-        // leu um token a mais para verificar o fim do while, então volta um passo
-         devolverToken(token);
-         token = obterToken(arquivo);
     }
     devolverToken(token);
 
@@ -487,7 +480,10 @@ int compilaBloco(FILE *arquivo) {
         
         token = obterToken(arquivo);
         while (token.t != fim) {
-            devolverToken(token);
+            if (token.t != pontoevirgula) {
+                printf("Esperava-se ponto e virgula!\n");
+                exit(1);
+            }
             comando(arquivo);
             token = obterToken(arquivo);
         }
