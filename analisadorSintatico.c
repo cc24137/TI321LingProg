@@ -79,7 +79,7 @@ int parametrosFormais(FILE *arquivo) {
         devolverToken(token);
     }
     
-    return 0;
+    return 1;
 }
 
 int fator(FILE *arquivo) {
@@ -134,19 +134,55 @@ int fator(FILE *arquivo) {
         exit(1);
     }
 
-    return 0;
+    return 1;
 }
 
 int termo(FILE *arquivo) {
-    return 0;
+    fator(arquivo);
+    
+    anaLexReturn token = obterToken(arquivo);
+    while (token.t == asterisco || token.t == dividir || token.t == e) {
+        fator(arquivo);
+        token = obterToken(arquivo);
+    }
+     devolverToken(token);
+    
+    return 1;
 }
 
 int expressaoSimples(FILE *arquivo) {
-    return 0;
+    anaLexReturn token = obterToken(arquivo);
+    
+    if (token.t == mais || token.t == menos) {
+        token = obterToken(arquivo);
+    }
+    else {
+        devolverToken(token);
+    }
+    
+    termo(arquivo);
+    
+    token = obterToken(arquivo);
+    while (token.t == mais || token.t == menos || token.t == ou) {
+        termo(arquivo);
+        token = obterToken(arquivo);
+    }
+     devolverToken(token);
+     
+    return 1;
 }
 
 int expressao(FILE *arquivo) {
-    return 0;
+    expressaoSimples(arquivo);
+    
+    anaLexReturn token = obterToken(arquivo);
+    if (token.t == igual || token.t == diferente || token.t == menor || token.t == maior || token.t == menorouigual || token.t == maiorouigual) {
+        expressaoSimples(arquivo);
+    } else {
+        devolverToken(token);
+    }
+    
+    return 1;
 }
 
 int comandoSemRotulo(FILE *arquivo) {
@@ -252,7 +288,7 @@ int comandoSemRotulo(FILE *arquivo) {
         printf("Esperava-se um comando sem rótulo válido!\n");
         exit(1);
     }
-    return 0;
+    return 1;
 }
 
 int comando(FILE *arquivo) {
@@ -270,7 +306,7 @@ int comando(FILE *arquivo) {
     
     comandoSemRotulo(arquivo);
     
-    return 0;
+    return 1;
 }
 
 int compilaBloco(FILE *arquivo) {
@@ -457,7 +493,7 @@ int compilaBloco(FILE *arquivo) {
         }
     }
     
-    return 0;
+    return 1;
 }
 
 void compilaPrograma (FILE *arquivo)
