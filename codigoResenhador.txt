@@ -1,1 +1,36 @@
-program ronaldo(umidentificador, outroidentificador);. coisadepoisdoponto
+program bossFinal(in, out);
+label 99;
+type
+    meuInteiro := int;
+    meuFloat := float;
+var
+    x, y : int;
+
+function calcularDobro(valor : meuInteiro) : meuInteiro;
+var
+    temp : int;
+begin
+    temp := valor * 2;
+    calcularDobro := temp
+end;
+
+procedure verificarLimite(var limite : meuInteiro);
+begin
+    if limite > 100 then
+        goto 99
+    else
+        limite := limite + 10
+end;
+
+begin
+    x := 10;
+    
+    while x <= 100 do
+    begin
+        y := calcularDobro(x);
+        verificarLimite(x)
+    end;
+    
+    99: 
+    x := 0
+end.

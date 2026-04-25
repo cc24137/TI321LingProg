@@ -188,11 +188,10 @@ int comandoSemRotulo(FILE *arquivo) {
         
         token = obterToken(arquivo);
         while (token.t == abrecolchetes) {
-            token = obterToken(arquivo);
-            while (token.t == virgula) {
+            do {
                 expressao(arquivo);
                 token = obterToken(arquivo);
-            }
+            } while (token.t == virgula);
             
             if (token.t != fechacolchetes) {
                 printf("Esperava-se fechacolchetes!\n");
@@ -202,11 +201,10 @@ int comandoSemRotulo(FILE *arquivo) {
         }
             
         if (token.t == abreparenteses) {
-            token = obterToken(arquivo);
-            while (token.t == virgula) {
+            do {
                 expressao(arquivo);
                 token = obterToken(arquivo);
-            }
+            } while (token.t == virgula);
             
             if (token.t != fechaparenteses) {
                 printf("Esperava-se fechaparenteses!\n");
@@ -487,6 +485,9 @@ int compilaBloco(FILE *arquivo) {
             comando(arquivo);
             token = obterToken(arquivo);
         }
+    } 
+    else {
+        devolverToken(token); 
     }
     
     return 1;

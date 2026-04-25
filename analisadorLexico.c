@@ -31,7 +31,7 @@ char ehCaracterDePalavra(char c) {
 }
 
 char ehSeparador(char c) {
-    return (c == ' ' || c == '\n' || c == '\t');
+    return (c == ' ' || c == '\n' || c == '\r' || c == '\t');
 }
 
 
@@ -71,14 +71,15 @@ anaLexReturn anaLex(FILE* arquivo) {
     char c = fgetc(arquivo);
     char i = 0;
     
+    // pula todos os separadores
+    while (c != EOF && ehSeparador(c)) {
+        c = fgetc(arquivo);
+    }
+
+    // verifica EOF
     if (c == EOF) {
         ret.t = fimdearquivo;
         return ret;
-    }
-
-
-    if (ehSeparador(c)) {
-        c = fgetc(arquivo);
     }
 
     // letra inicia palavra reservada e identificador
@@ -91,11 +92,8 @@ anaLexReturn anaLex(FILE* arquivo) {
         string[i] = '\0';
 
         token t = qualToken(string);
-        //printf("Token da palavra '%s': %d\n", string, t);
         if (t == identificador){
-            //printf("identificador encontrado: %s\n", string);
             strcpy(ret.palavra, string);
-            //printf("O que foi passado para return: %s\n", ret.palavra);
         }
         
         ret.t = t;
@@ -111,7 +109,6 @@ anaLexReturn anaLex(FILE* arquivo) {
         fseek(arquivo, -1, SEEK_CUR);
         string[i] = '\0';
         
-        //printf("Token do número %d : %d\n", qualNum(string), numero);
         ret.t = numero;
         ret.num = qualNum(string);
         return ret;
@@ -119,29 +116,31 @@ anaLexReturn anaLex(FILE* arquivo) {
     
     if (ehSimboloUnico(c)){
         char s[2] = {c, '\0'};
-        //printf("Token de símbolo: %d\n", qualToken(s));
         ret.t = qualToken(s);
         return ret;
     }
+    
     if (ehSimboloInicial(c)){
         char prox = fgetc(arquivo);
-        char s[2] = {c, prox};
+        // precisa de 3 caracteres para incluir o \0
+        char s[3] = {c, prox, '\0'}; 
+        
         token t = qualToken(s);
+        
         if (t != identificador){
-            //printf("Token de símbolo: %d\n", t);
             ret.t = t;
         }
-        else{
-            s[1] = '\0';
+        else {
+            // Se falhou o composto
+            // corta a string e devolve o prox pro buffer
+            s[1] = '\0'; 
             token t = qualToken(s);
             ungetc(prox, arquivo);
-            //printf("Token de símbolo: %d\n", t);
             ret.t = t;
         }
         return ret;
     }
 
     ret.t = -2;
-    //printf("nao reconheceu nada");
     return ret;
 }
