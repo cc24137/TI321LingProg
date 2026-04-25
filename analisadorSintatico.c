@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 #include "analisadorLexico.h"
 #include "analisadorSintatico.h"
 #include "tipos.h"
@@ -22,7 +21,7 @@ void devolverToken(anaLexReturn token_lido) {
     tem_token_no_buffer = 1;
 }
 
-int parametrosFormais(FILE *arquivo) {
+int compilaParametrosFormais(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     if (token.t == abreparenteses) {
         do {
@@ -82,7 +81,7 @@ int parametrosFormais(FILE *arquivo) {
     return 1;
 }
 
-int fator(FILE *arquivo) {
+int compilaFator(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
 
     if (token.t == identificador) {
@@ -90,7 +89,7 @@ int fator(FILE *arquivo) {
         
         while (token.t == abrecolchetes) {
             do {
-                expressao(arquivo);
+                compilaExpressao(arquivo);
                 token = obterToken(arquivo);
             } while (token.t == virgula);
 
@@ -103,7 +102,7 @@ int fator(FILE *arquivo) {
 
         while (token.t == abreparenteses) {
             do {
-                expressao(arquivo);
+                compilaExpressao(arquivo);
                 token = obterToken(arquivo);
             } while (token.t == virgula);
 
@@ -119,7 +118,7 @@ int fator(FILE *arquivo) {
     else if (token.t == numero) {
     } 
     else if (token.t == abreparenteses) {
-        expressao(arquivo);
+        compilaExpressao(arquivo);
         token = obterToken(arquivo);
         if (token.t != fechaparenteses) {
             printf("Esperava-se fechaparenteses!\n");
@@ -127,7 +126,7 @@ int fator(FILE *arquivo) {
         }
     } 
     else if (token.t == nao) {
-        fator(arquivo);
+        compilaFator(arquivo);
     } 
     else {
         printf("Esperava-se um fator valido!\n");
@@ -137,12 +136,12 @@ int fator(FILE *arquivo) {
     return 1;
 }
 
-int termo(FILE *arquivo) {
-    fator(arquivo);
+int compilaTermo(FILE *arquivo) {
+    compilaFator(arquivo);
     
     anaLexReturn token = obterToken(arquivo);
     while (token.t == asterisco || token.t == dividir || token.t == e) {
-        fator(arquivo);
+        compilaFator(arquivo);
         token = obterToken(arquivo);
     }
      devolverToken(token);
@@ -150,18 +149,18 @@ int termo(FILE *arquivo) {
     return 1;
 }
 
-int expressaoSimples(FILE *arquivo) {
+int compilaExpressaoSimples(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     
     if (token.t != mais && token.t != menos) {
        devolverToken(token);
     }
     
-    termo(arquivo);
+    compilaTermo(arquivo);
     
     token = obterToken(arquivo);
     while (token.t == mais || token.t == menos || token.t == ou) {
-        termo(arquivo);
+        compilaTermo(arquivo);
         token = obterToken(arquivo);
     }
      devolverToken(token);
@@ -169,12 +168,12 @@ int expressaoSimples(FILE *arquivo) {
     return 1;
 }
 
-int expressao(FILE *arquivo) {
-    expressaoSimples(arquivo);
+int compilaExpressao(FILE *arquivo) {
+    compilaExpressaoSimples(arquivo);
     
     anaLexReturn token = obterToken(arquivo);
     if (token.t == igual || token.t == diferente || token.t == menor || token.t == maior || token.t == menorouigual || token.t == maiorouigual) {
-        expressaoSimples(arquivo);
+        compilaExpressaoSimples(arquivo);
     } else {
         devolverToken(token);
     }
@@ -182,14 +181,14 @@ int expressao(FILE *arquivo) {
     return 1;
 }
 
-int comandoSemRotulo(FILE *arquivo) {
+int compilaComandoSemRotulo(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     if (token.t == identificador) {
         
         token = obterToken(arquivo);
         while (token.t == abrecolchetes) {
             do {
-                expressao(arquivo);
+                compilaExpressao(arquivo);
                 token = obterToken(arquivo);
             } while (token.t == virgula);
             
@@ -202,7 +201,7 @@ int comandoSemRotulo(FILE *arquivo) {
             
         if (token.t == abreparenteses) {
             do {
-                expressao(arquivo);
+                compilaExpressao(arquivo);
                 token = obterToken(arquivo);
             } while (token.t == virgula);
             
@@ -217,7 +216,7 @@ int comandoSemRotulo(FILE *arquivo) {
 
         token = obterToken(arquivo);
         if (token.t == atribuicao) {
-            expressao(arquivo);
+            compilaExpressao(arquivo);
         }
         else {
             devolverToken(token);
@@ -233,7 +232,7 @@ int comandoSemRotulo(FILE *arquivo) {
     }
     
     else if (token.t == inicio) {
-        comando(arquivo);
+        compilaComando(arquivo);
         
         token = obterToken(arquivo);
         while (token.t != fim) {
@@ -241,13 +240,13 @@ int comandoSemRotulo(FILE *arquivo) {
                 printf("Esperava-se ponto e virgula!\n");
                 exit(1);
             }
-            comando(arquivo);
+            compilaComando(arquivo);
             token = obterToken(arquivo);
         }
     }
     
     else if (token.t == se) {
-        expressao(arquivo);
+        compilaExpressao(arquivo);
         
         token = obterToken(arquivo);
         if (token.t != entao) {
@@ -255,11 +254,11 @@ int comandoSemRotulo(FILE *arquivo) {
             exit(1);
         }
         
-        comandoSemRotulo(arquivo);
+        compilaComandoSemRotulo(arquivo);
         
         token = obterToken(arquivo);
         if (token.t == senao) {
-            comandoSemRotulo(arquivo);
+            compilaComandoSemRotulo(arquivo);
         }
         else {
             devolverToken(token);
@@ -267,7 +266,7 @@ int comandoSemRotulo(FILE *arquivo) {
     }
     
     else if (token.t == enquanto) {
-        expressao(arquivo);
+        compilaExpressao(arquivo);
         
         token = obterToken(arquivo);
         if (token.t != faz) {
@@ -275,7 +274,7 @@ int comandoSemRotulo(FILE *arquivo) {
             exit(1);
         }
         
-        comandoSemRotulo(arquivo);
+        compilaComandoSemRotulo(arquivo);
     }
     
     else {
@@ -285,7 +284,7 @@ int comandoSemRotulo(FILE *arquivo) {
     return 1;
 }
 
-int comando(FILE *arquivo) {
+int compilaComando(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     if (token.t == numero) {
         token = obterToken(arquivo);
@@ -298,7 +297,7 @@ int comando(FILE *arquivo) {
         devolverToken(token);
     }
     
-    comandoSemRotulo(arquivo);
+    compilaComandoSemRotulo(arquivo);
     
     return 1;
 }
@@ -429,7 +428,7 @@ int compilaBloco(FILE *arquivo) {
                 exit(1);
             }
 
-            parametrosFormais(arquivo);
+            compilaParametrosFormais(arquivo);
         }
 
         if (token.t == funcao) {
@@ -439,7 +438,7 @@ int compilaBloco(FILE *arquivo) {
                 exit(1);
             }
 
-            parametrosFormais(arquivo);
+            compilaParametrosFormais(arquivo);
 
             token = obterToken(arquivo);
             if (token.t != doispontos) {
@@ -474,7 +473,7 @@ int compilaBloco(FILE *arquivo) {
     
     // ja leu o token anteriormente
     if (token.t == inicio) {
-        comando(arquivo);
+        compilaComando(arquivo);
         
         token = obterToken(arquivo);
         while (token.t != fim) {
@@ -482,7 +481,7 @@ int compilaBloco(FILE *arquivo) {
                 printf("Esperava-se ponto e virgula!\n");
                 exit(1);
             }
-            comando(arquivo);
+            compilaComando(arquivo);
             token = obterToken(arquivo);
         }
     } 

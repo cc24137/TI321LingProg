@@ -4,12 +4,12 @@
 #define analisadorSintatico_h
 
 void compilaPrograma(FILE* arquivo);
-int parametrosFormais(FILE *arquivo);
-int fator(FILE *arquivo);
-int termo(FILE *arquivo);
-int expressaoSimples(FILE *arquivo);
-int expressao(FILE *arquivo);
-int comandoSemRotulo(FILE *arquivo);
-int comando(FILE *arquivo);
+int compilaParametrosFormais(FILE *arquivo);
+int compilaFator(FILE *arquivo);
+int compilaTermo(FILE *arquivo);
+int compilaExpressaoSimples(FILE *arquivo);
+int compilaExpressao(FILE *arquivo);
+int compilacomandoSemRotulo(FILE *arquivo);
+int compilaComando(FILE *arquivo);
 int compilaBloco(FILE *arquivo);
 #endif
