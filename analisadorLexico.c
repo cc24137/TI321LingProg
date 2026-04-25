@@ -4,6 +4,22 @@
 #include "tipos.h"
 #include "tokens.h"
 
+anaLexReturn token_buffer;
+int tem_token_no_buffer = 0;
+
+anaLexReturn obterToken(FILE *arquivo) {
+    if (tem_token_no_buffer) {
+        tem_token_no_buffer = 0;
+        return token_buffer;
+    }
+    return anaLex(arquivo);
+}
+
+void devolverToken(anaLexReturn token_lido) {
+    token_buffer = token_lido;
+    tem_token_no_buffer = 1;
+}
+
 char ehSimboloInicial(char c){
     return ( c==':' || c=='>' || c=='<');
 }

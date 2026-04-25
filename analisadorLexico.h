@@ -5,6 +5,7 @@
 #define analisadorLexico_h
 
 anaLexReturn anaLex(FILE* arquivo);
-
+anaLexReturn obterToken(FILE *arquivo);
+void devolverToken(anaLexReturn token_lido);
 
 #endif
