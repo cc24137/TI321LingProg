@@ -83,4 +83,12 @@ typedef struct {
     int num;
 } anaLexReturn;
 
+typedef struct {
+    char nome[100];
+    token tipo;
+    
+    unsigned int endereco;
+    char contexto;
+} simbolo;
+
 #endif
