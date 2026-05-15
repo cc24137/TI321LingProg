@@ -133,6 +133,24 @@ anaLexReturn anaLex(FILE* arquivo) {
     if (ehSimboloUnico(c)){
         char s[2] = {c, '\0'};
         ret.t = qualToken(s);
+
+        if (ret.t == abreparenteses) {
+            // verifica por comentario (*comentario*)
+            char caracter = fgetc(arquivo);
+            if (caracter == '*') {
+                while (1) {
+                    if (fgetc(arquivo) == '*') {
+                        if (fgetc(arquivo) == ')') {
+                            return anaLex(arquivo); // sai e retorna o proximo token de verdade
+                        }
+                    }
+                }
+            }
+            else {
+                ungetc(caracter, arquivo);
+            }
+        }
+        
         return ret;
     }
     
