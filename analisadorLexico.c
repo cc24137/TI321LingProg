@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "analisadorLexico.h"
 #include "tipos.h"
@@ -133,16 +134,25 @@ anaLexReturn anaLex(FILE* arquivo) {
     if (ehSimboloUnico(c)){
         char s[2] = {c, '\0'};
         ret.t = qualToken(s);
-
+        
         if (ret.t == abreparenteses) {
             // verifica por comentario (*comentario*)
             char caracter = fgetc(arquivo);
             if (caracter == '*') {
                 while (1) {
-                    if (fgetc(arquivo) == '*') {
+                    caracter = fgetc(arquivo);
+                    if (caracter == '*') {
                         if (fgetc(arquivo) == ')') {
                             return anaLex(arquivo); // sai e retorna o proximo token de verdade
                         }
+                        else {
+                            printf("Comentário não fechado corretamente!");
+                            exit(1);
+                        }
+                    }
+                    else if (caracter == EOF) {
+                        printf("Comentário não fechado corretamente!");
+                        exit(1)
                     }
                 }
             }

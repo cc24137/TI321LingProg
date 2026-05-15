@@ -463,13 +463,17 @@ int compilaBloco(FILE *arquivo) {
         token = obterToken(arquivo);
         while (token.t != fim) {
             if (token.t != pontoevirgula) {
+                if (token.t == doispontos) {
+                    printf("Esperava-se atribuição!\n");
+                    exit(1);
+                }
                 printf("Esperava-se ponto e virgula!\n");
                 exit(1);
             }
             compilaComando(arquivo);
             token = obterToken(arquivo);
         }
-    } 
+    }
     else {
         devolverToken(token); 
     }
