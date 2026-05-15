@@ -1,14 +1,14 @@
 program bossFinal(in, out);
 label 99;
 type
-    meuInteiro := int;
+    meuInteiro := integer;
     meuFloat := float;
 var
-    x, y : int;
+    x, y : integer;
 
 function calcularDobro(valor : meuInteiro) : meuInteiro;
 var
-    temp : int;
+    temp : integer;
 begin
     temp := valor * 2;
     calcularDobro := temp

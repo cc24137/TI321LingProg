@@ -5,6 +5,9 @@
 #include "tipos.h"
 #include "tokens.h"
 #include <stdlib.h>
+#include "tabelaSimbolos.h"
+
+char escopo = 0;
 
 int compilaParametrosFormais(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
@@ -44,7 +47,7 @@ int compilaParametrosFormais(FILE *arquivo) {
                 }
                 
                 token = obterToken(arquivo);
-                if (token.t != identificador) {
+                if (token.t != identificador && (token.t < 11 || token.t > 16)) {
                     printf("Esperava-se um identificador de tipo após os dois pontos!\n");
                     exit(1);
                 }
@@ -321,6 +324,11 @@ int compilaBloco(FILE *arquivo) {
         }
 
         while (token.t == identificador) {
+            char* nomeDoTipoNovo = (char*) malloc(sizeof(100));
+            //printf("Chegou na definição de tipos\n");
+            strcpy(nomeDoTipoNovo, token.palavra);
+            //printf("Copiou para a variável\n");
+            //printf("%s\n", nomeDoTipoNovo);
             // ja leu o proximo token
             if (token.t != identificador) {
                 printf("Esperava-se um identificador!\n");
@@ -328,6 +336,7 @@ int compilaBloco(FILE *arquivo) {
             }
 
             token = obterToken(arquivo);
+            //printf("%s\n", nomeDoTipoNovo);
             if (token.t != atribuicao) {
                 printf("Esperava-se um sinal de atribuição!\n");
                 exit(1);
@@ -336,11 +345,17 @@ int compilaBloco(FILE *arquivo) {
             // REVISAR OS TIPOS ACEITOS
             token = obterToken(arquivo); // sera que pode ser algo tipo struct também nos tipos?
             if (token.t != inteiro && token.t != longo && token.t != curto && token.t != flutuante && token.t != duplo && token.t != caractere) {
-                printf("Esperava-se um tipo!\n");
+                printf("Esperava-se um tipo! 1\n");
+                //printf("%d", token.t);
                 exit(1);
             }
+            //printf("Nome do tipo novo: %s\n", nomeDoTipoNovo);
+            adicionaNaTabelaSimbolos(nomeDoTipoNovo, palavras[token.t], escopo, natureza_tipo);
+            free(nomeDoTipoNovo);
+            
 
             token = obterToken(arquivo);
+            //printaTabela();
             if (token.t != virgula && token.t != pontoevirgula) {
                 printf("Esperava-se uma vírgula ou um ponto e vírgula!\n");
                 exit(1);
@@ -352,6 +367,8 @@ int compilaBloco(FILE *arquivo) {
     }
     devolverToken(token);
 
+    //printaTabela();
+
     token = obterToken(arquivo);
     if (token.t == variavel) {
         token = obterToken(arquivo);
@@ -360,8 +377,15 @@ int compilaBloco(FILE *arquivo) {
             exit(1);
         }
 
-        while (token.t == identificador) {
+        int idxVariaveis = 0;
+        char* variaveis[20];
 
+        char* nomeDaVariavel = (char*) malloc(100);
+        strcpy(nomeDaVariavel, token.palavra);
+        variaveis[idxVariaveis++] = nomeDaVariavel;
+
+        while (token.t == identificador) {
+            
             token = obterToken(arquivo);
             while (token.t == virgula) {
                 token = obterToken(arquivo);
@@ -369,7 +393,10 @@ int compilaBloco(FILE *arquivo) {
                     printf("Esperava-se um identificador!\n");
                     exit(1);
                 }
-
+                char* nomeDaVariavel = (char*) malloc(100);
+                strcpy(nomeDaVariavel, token.palavra);
+                variaveis[idxVariaveis++] = nomeDaVariavel;
+                
                 token = obterToken(arquivo);
                 // preparou para proximo identificador
             }
@@ -383,10 +410,22 @@ int compilaBloco(FILE *arquivo) {
             }
 
             token = obterToken(arquivo);
-            if (token.t != inteiro && token.t != longo && token.t != curto && token.t != flutuante && token.t != duplo && token.t != caractere) {
-                printf("Esperava-se um tipo!\n");
+            if (token.t != identificador && token.t != inteiro && token.t != longo && token.t != curto && token.t != flutuante && token.t != duplo && token.t != caractere) {
+                printf("Esperava-se um tipo! 2\n");
                 exit(1);
             }
+            char nomeDoTipoDasVariaveis[100];
+            if (token.t == identificador){
+                strcpy(nomeDoTipoDasVariaveis, token.palavra);
+            } else{
+                strcpy(nomeDoTipoDasVariaveis, palavras[token.t]);
+            }
+
+            for (int i=0; i<idxVariaveis; i++){
+                adicionaNaTabelaSimbolos(variaveis[i], nomeDoTipoDasVariaveis, escopo, natureza_variavel);
+                free(variaveis[i]);
+            }
+            printaTabela();
 
             token = obterToken(arquivo);
             if (token.t != pontoevirgula) {
@@ -432,7 +471,7 @@ int compilaBloco(FILE *arquivo) {
             }
 
             token = obterToken(arquivo);
-            if (token.t != identificador) {
+            if (token.t != identificador && (token.t < 11 || token.t > 16)) {
                 printf("Esperava-se um identificador!\n");
                 exit(1);
             }
@@ -490,15 +529,20 @@ void compilaPrograma (FILE *arquivo)
         printf("Esperava-se a palavra PROGRAM!\n");
         exit(1);
     }
-
+    
+    
     token = obterToken(arquivo);
     if (token.t!=identificador)
     {
         printf("Esperava-se um identificador!\n");
         exit(1);
     }
+    //printf("Vai botar na tabela\n");
+    adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_nomePrograma);
+    //printf("Botou\n");
 
     token = obterToken(arquivo);
+    //printaTabela();
     if (token.t!=abreparenteses)
     {
         printf("Esperava-se um abre parenteses! Token encontrado = %d\n", token.t);
@@ -513,6 +557,8 @@ void compilaPrograma (FILE *arquivo)
             printf("Esperava-se um identificador!\n");
             exit(1);
         }
+        adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_parametro);
+        
         token = obterToken(arquivo);
         if (token.t!=virgula && token.t!=fechaparenteses)
         {
@@ -527,8 +573,10 @@ void compilaPrograma (FILE *arquivo)
         printf("Esperava-se um ponto e virgula!\n");
         exit(1);
     }
-
+    
+    escopo++;
     compilaBloco(arquivo);
+    escopo--;
 
     token = obterToken(arquivo);
     if (token.t!=ponto)

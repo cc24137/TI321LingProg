@@ -89,7 +89,7 @@ char *palavras[64] = {
     "case",
     "return",
     "char",
-    "int",
+    "integer",
     "long",
     "short",
     "float",

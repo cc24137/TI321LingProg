@@ -4,7 +4,9 @@
 #include "tipos.h"
 
 char temNaTabelaSimbolos(char *nome);
-void adicionaNaTabelaSimbolos(char *nome, token tipo, char contexto);
-void apagaContextoTabelaSimbolos(char contexto);
+void adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas natureza);
+void apagaEscopoTabelaSimbolos(char contexto);
+void printaTabela();
+
 
 #endif // tabelaSimbolos_h
