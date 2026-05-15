@@ -19,7 +19,7 @@ void escreverTokens(FILE *arquivo) {
         if (r.t == numero){
             printf("Número encontrado: %d \n", r.num);
         }
-        if (r.t == identificador){
+        else if (r.t == identificador){
             printf("Identificador encontrado: '%s' \n", r.palavra);
         }
         else {
