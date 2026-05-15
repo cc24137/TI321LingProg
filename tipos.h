@@ -83,12 +83,21 @@ typedef struct {
     int num;
 } anaLexReturn;
 
+typedef enum {
+    natureza_procedimento,
+    natureza_funcao,
+    natureza_parametro,
+    natureza_variavel,
+    natureza_nomePrograma,
+    natureza_tipo
+} naturezas;
+
 typedef struct {
     char nome[100];
-    token tipo;
-    
+    char tipo[100];
+    naturezas natureza; 
     unsigned int endereco;
-    char contexto;
+    char escopo;
 } simbolo;
 
 #endif

@@ -18,23 +18,35 @@ char temNaTabelaSimbolos(char *nome) {
     return 0;
 }
 
-void adicionaNaTabelaSimbolos(char *nome, token tipo, char contexto) {
+void adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas natureza) {
     if (topo >= MAX_SIMBOLOS) {
         printf("Tabela de simbolos cheia!\n");
         exit(1);
     }
     
+    
     // insere direto no topo
     strcpy(tabela_simbolos[topo].nome, nome);
-    tabela_simbolos[topo].tipo = tipo;
-    tabela_simbolos[topo].contexto = contexto;
+    strcpy(tabela_simbolos[topo].tipo, tipo); // se não tiver tipo, espera-se receber ""(string vazia)
+    //printf("Colocou as strings\n");
+    tabela_simbolos[topo].escopo = escopo;
+    tabela_simbolos[topo].natureza = natureza;
+    // colocar endereço depois;
     
     topo++;
 }
 
-void apagaContextoTabelaSimbolos(char contexto) {
-    // recua o topo ate o fim do contexto para "apagar o contexto"
-    while (topo > 0 && tabela_simbolos[topo - 1].contexto == contexto) {
+void apagaEscopoTabelaSimbolos(char escopo) {
+    // recua o topo ate o fim do escopo para "apagar o escopo"
+    while (topo > 0 && tabela_simbolos[topo - 1].escopo == escopo) {
         topo--; 
     }
 }
+
+void printaTabela(){
+    printf("Print da tabela para debug\n");
+    for (int i=0; i<topo; i++){
+        printf("%d: %s, %s, %d, %d\n", i, tabela_simbolos[i].nome, tabela_simbolos[i].tipo, tabela_simbolos[i].escopo, tabela_simbolos[i].natureza);
+    }
+}
+
