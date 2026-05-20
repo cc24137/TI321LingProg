@@ -152,7 +152,7 @@ anaLexReturn anaLex(FILE* arquivo) {
                     }
                     else if (caracter == EOF) {
                         printf("Comentário não fechado corretamente!");
-                        exit(1)
+                        exit(1);
                     }
                 }
             }
