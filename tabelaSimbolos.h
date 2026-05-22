@@ -8,5 +8,6 @@ void adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas nat
 void apagaEscopoTabelaSimbolos(char contexto);
 void printaTabela();
 naturezas obterNaturezaNaTabela(char *nome);
+char* obterTipoNaTabela(char *nome);
 
 #endif // tabelaSimbolos_h

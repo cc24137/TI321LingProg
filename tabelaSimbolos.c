@@ -59,3 +59,13 @@ naturezas obterNaturezaNaTabela(char *nome) {
     
     return -1; 
 }
+
+char* obterTipoNaTabela(char *nome) {
+    for (int i = topo - 1; i >= 0; i--) {
+        if (strcmp(tabela_simbolos[i].nome, nome) == 0) {
+            return tabela_simbolos[i].tipo;
+        }
+    }
+    
+    return "";
+}

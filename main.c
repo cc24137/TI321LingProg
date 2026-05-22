@@ -1,12 +1,11 @@
 #include <stdio.h>
-#include <string.h>
 #include "analisadorLexico.h"
 #include "tokens.h"
 #include "analisadorSintatico.h"
 
 void escreverTokens(FILE *arquivo) {
     anaLexReturn r = anaLex(arquivo);
-    
+
     while (r.t != fimdearquivo) {
         if (r.t == -1) {
             r = anaLex(arquivo);
@@ -25,7 +24,7 @@ void escreverTokens(FILE *arquivo) {
         else {
             printf("Token %d encontrado: palavra-chave '%s' \n", r.t, palavras[r.t]);
         }
-        
+
         r = anaLex(arquivo);
     }
 }
@@ -38,7 +37,7 @@ int main(){
         printf("Erro ao abrir o arquivo.\n");
         return 2;
     }
-    
+
     compilaPrograma(arquivo);
 
     fclose(arquivo);

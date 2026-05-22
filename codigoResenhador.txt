@@ -1,36 +1,37 @@
-program bossFinal(in, out);
-label 99;
-type
-    meuInteiro := integer;
-    meuFloat := float;
-var
-    x, y : integer;
+program exemplo12(input,output);
 
-function calcularDobro(valor : meuInteiro) : meuInteiro;
-var
-    temp : integer;
-begin
-    temp := valor * 2;
-    calcularDobro := temp
-end;
+    var x: integer;
 
-procedure verificarLimite(var limite : meuInteiro);
-begin
-    if limite > 100 then
-        goto 99
-    else
-        limite := limite + 10
-end;
+    procedure p(var t: integer);
+        label 100,200;
+        var s: integer;
 
-begin
-    x := 10;
-    
-    while x <= 100 do
+        function f(z: integer): integer;
+        begin
+            if z<0
+            then goto 200
+            else
+                if z=0 then f:=2
+                       else f:=f(z-2)*z+1
+        end (* f *);
+
     begin
-        y := calcularDobro(x);
-        verificarLimite(x)
-    end;
-    
-    99: 
-    x := 0
+        100: s:=f(t); t:=s;
+             if t<x then goto 100;
+        200: x:=x-1
+    end (* p *);
+
+    procedure r;
+
+        procedure q;
+            var y: integer;
+        begin
+            read(y); p(y); write(y)
+        end (* q *);
+
+    begin q end (* r *);
+
+begin
+    read(x);
+    r
 end.

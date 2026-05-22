@@ -44,7 +44,7 @@ char ehNumero(char c) {
 }
 
 char ehCaracterDePalavra(char c) {
-    return ehLetra(c) || ehNumero(c) || (c == '_') || (c == '-');
+    return ehLetra(c) || ehNumero(c) || (c == '_');
 }
 
 char ehSeparador(char c) {

@@ -8,6 +8,7 @@
 #include "tabelaSimbolos.h"
 
 char escopo = 0;
+char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
 
 int compilaParametrosFormais(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
@@ -101,6 +102,23 @@ int compilaFator(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
 
     if (token.t == identificador) {
+        
+        // verificação semântica no fator -> garannte que o identificador existe e que não é um programa ou procedimento
+        if (!temNaTabelaSimbolos(token.palavra)) {
+            printf("Erro Semântico: Identificador '%s' não foi declarado!\n", token.palavra);
+            exit(1);
+        }
+        
+        naturezas nat = obterNaturezaNaTabela(token.palavra);
+        if (nat == natureza_nomePrograma || nat == natureza_procedimento) {
+            printf("Erro Semântico: Uso inválido! O identificador '%s' não pode ser usado dentro de uma expressão matemática/lógica.\n", token.palavra);
+            exit(1);
+        }
+
+        // ADICIONADO: Guarda o tipo original do identificador
+        char tipoOriginalFator[100];
+        strcpy(tipoOriginalFator, obterTipoNaTabela(token.palavra));
+
         token = obterToken(arquivo);
         
         while (token.t == abrecolchetes) {
@@ -129,9 +147,14 @@ int compilaFator(FILE *arquivo) {
             token = obterToken(arquivo);
         }
         
+        // restaura o tipo original ao final do fator
+        strcpy(tipo_expressao_atual, tipoOriginalFator);
+
         devolverToken(token);
     } 
     else if (token.t == numero) {
+        // tipo inteiro para numeros
+        strcpy(tipo_expressao_atual, palavras[inteiro]);
     } 
     else if (token.t == abreparenteses) {
         compilaExpressao(arquivo);
@@ -155,9 +178,22 @@ int compilaFator(FILE *arquivo) {
 int compilaTermo(FILE *arquivo) {
     compilaFator(arquivo);
     
+    // salva o tipo esquerdo antes de possíveis multiplicações/divisões/and
+    char tipoEsq[100];
+    strcpy(tipoEsq, tipo_expressao_atual);
+
     anaLexReturn token = obterToken(arquivo);
     while (token.t == asterisco || token.t == dividir || token.t == e) {
         compilaFator(arquivo);
+        
+        // verifica com o tipo direito
+        char tipoDir[100];
+        strcpy(tipoDir, tipo_expressao_atual);
+        if (strcmp(tipoEsq, tipoDir) != 0) {
+            printf("Erro Semântico: Tipos incompativeis no termo! Nao se pode operar '%s' com '%s'.\n", tipoEsq, tipoDir);
+            exit(1);
+        }
+
         token = obterToken(arquivo);
     }
      devolverToken(token);
@@ -174,9 +210,22 @@ int compilaExpressaoSimples(FILE *arquivo) {
     
     compilaTermo(arquivo);
     
+    // salva o tipo esquerdo
+    char tipoEsq[100];
+    strcpy(tipoEsq, tipo_expressao_atual);
+
     token = obterToken(arquivo);
     while (token.t == mais || token.t == menos || token.t == ou) {
         compilaTermo(arquivo);
+        
+        // verifica com o tipo direito da expressao
+        char tipoDir[100];
+        strcpy(tipoDir, tipo_expressao_atual);
+        if (strcmp(tipoEsq, tipoDir) != 0) {
+            printf("Erro Semântico: Tipos incompativeis na expressao! Nao se pode operar '%s' com '%s'.\n", tipoEsq, tipoDir);
+            exit(1);
+        }
+
         token = obterToken(arquivo);
     }
      devolverToken(token);
@@ -187,9 +236,23 @@ int compilaExpressaoSimples(FILE *arquivo) {
 int compilaExpressao(FILE *arquivo) {
     compilaExpressaoSimples(arquivo);
     
+    // tipo esquerdo
+    char tipoEsq[100];
+    strcpy(tipoEsq, tipo_expressao_atual);
+
     anaLexReturn token = obterToken(arquivo);
     if (token.t == igual || token.t == diferente || token.t == menor || token.t == maior || token.t == menorouigual || token.t == maiorouigual) {
         compilaExpressaoSimples(arquivo);
+        
+        // compara tipos e transforma resultado em booleano
+        char tipoDir[100];
+        strcpy(tipoDir, tipo_expressao_atual);
+        if (strcmp(tipoEsq, tipoDir) != 0) {
+            printf("Erro Semântico: Tipos incompativeis! Nao e possivel comparar '%s' com '%s'.\n", tipoEsq, tipoDir);
+            exit(1);
+        }
+        strcpy(tipo_expressao_atual, "boolean");
+
     } else {
         devolverToken(token);
     }
@@ -201,6 +264,15 @@ int compilaComandoSemRotulo(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     if (token.t == identificador) {
         
+        // verificação semântica no comando de atribuição -> garante que o identificador existe
+        char nomeAlvoAtribuicao[100];
+        strcpy(nomeAlvoAtribuicao, token.palavra);
+
+        if (!temNaTabelaSimbolos(nomeAlvoAtribuicao)) {
+            printf("Erro Semântico: Variável ou Procedimento '%s' não declarado!\n", nomeAlvoAtribuicao);
+            exit(1);
+        }
+
         token = obterToken(arquivo);
         while (token.t == abrecolchetes) {
             do {
@@ -232,7 +304,22 @@ int compilaComandoSemRotulo(FILE *arquivo) {
 
         token = obterToken(arquivo);
         if (token.t == atribuicao) {
+            // verificacao semantica de atribuição -> garante que o identificador é uma variável e não um procedimento ou programa
+            naturezas nat = obterNaturezaNaTabela(nomeAlvoAtribuicao);
+            if (nat == natureza_nomePrograma || nat == natureza_procedimento) {
+                printf("Erro Semântico: Impossível atribuir valor a '%s', pois ele é um Programa ou Procedimento!\n", nomeAlvoAtribuicao);
+                exit(1);
+            }
+
             compilaExpressao(arquivo);
+
+            // verifica o tipo da atribuição
+            char* tipoVariavelDestino = obterTipoNaTabela(nomeAlvoAtribuicao);
+            if (strcmp(tipoVariavelDestino, tipo_expressao_atual) != 0) {
+                printf("Erro Semântico: Atribuicao invalida! A variavel '%s' e do tipo '%s', mas a expressao enviada a ela e do tipo '%s'.\n", 
+                        nomeAlvoAtribuicao, tipoVariavelDestino, tipo_expressao_atual);
+                exit(1);
+            }
         }
         else {
             devolverToken(token);
@@ -439,7 +526,7 @@ int compilaBloco(FILE *arquivo) {
                 adicionaNaTabelaSimbolos(variaveis[i], nomeDoTipoDasVariaveis, escopo, natureza_variavel);
                 free(variaveis[i]);
             }
-            printaTabela();
+            // printaTabela();
 
             token = obterToken(arquivo);
             if (token.t != pontoevirgula) {
@@ -489,9 +576,7 @@ int compilaBloco(FILE *arquivo) {
             }
             strcpy(nomeSubrotina, token.palavra);
             
-            adicionaNaTabelaSimbolos(nomeSubrotina, "", escopo, natureza_funcao);
             escopo++;
-
             compilaParametrosFormais(arquivo);
 
             token = obterToken(arquivo);
@@ -505,6 +590,15 @@ int compilaBloco(FILE *arquivo) {
                 printf("Esperava-se um identificador!\n");
                 exit(1);
             }
+            // adiciona o tipo da função na tabela de simbolos para usar na verificação de chamadas e atribuições
+            char tipoDaFuncao[100];
+            if (token.t == identificador) {
+                strcpy(tipoDaFuncao, token.palavra);
+            } else {
+                strcpy(tipoDaFuncao, palavras[token.t]);
+            }
+            // escopo -1 por usar o escopo da funcao para salvar a assinatura dela na tabela de simbolos, e não o escopo do pai
+            adicionaNaTabelaSimbolos(nomeSubrotina, tipoDaFuncao, escopo - 1, natureza_funcao);
         }
 
         token = obterToken(arquivo);
@@ -570,6 +664,9 @@ void compilaPrograma(FILE *arquivo) {
 
     // nome do programa
     adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_nomePrograma);
+    // funcoes nativas
+    adicionaNaTabelaSimbolos("read", "", escopo, natureza_procedimento);
+    adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
 
     token = obterToken(arquivo);
     if (token.t != abreparenteses) {
@@ -586,6 +683,7 @@ void compilaPrograma(FILE *arquivo) {
         
         // adiciona parametros do programa
         adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_parametro);
+        
         
         token = obterToken(arquivo);
         if (token.t != virgula && token.t != fechaparenteses) {
