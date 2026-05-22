@@ -520,77 +520,63 @@ int compilaBloco(FILE *arquivo) {
     return 1;
 }
 
-void compilaPrograma (FILE *arquivo)
-{
+void compilaPrograma(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
 
-    if (token.t!=programa)
-    {
+    if (token.t != programa) {
         printf("Esperava-se a palavra PROGRAM!\n");
         exit(1);
     }
-    
-    
+
     token = obterToken(arquivo);
-    if (token.t!=identificador)
-    {
-        printf("Esperava-se um identificador!\n");
+    if (token.t != identificador) {
+        printf("Esperava-se um identificador para o nome do programa!\n");
         exit(1);
     }
-    //printf("Vai botar na tabela\n");
+
+    // nome do programa
     adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_nomePrograma);
-    //printf("Botou\n");
 
     token = obterToken(arquivo);
-    //printaTabela();
-    if (token.t!=abreparenteses)
-    {
-        printf("Esperava-se um abre parenteses! Token encontrado = %d\n", token.t);
+    if (token.t != abreparenteses) {
+        printf("Esperava-se um abre parenteses!\n");
         exit(1);
     }
 
-    while (token.t!=fechaparenteses)
-    {
+    while (token.t != fechaparenteses) {
         token = obterToken(arquivo);
-        if (token.t!=identificador)
-        {
+        if (token.t != identificador) {
             printf("Esperava-se um identificador!\n");
             exit(1);
         }
+        
+        // adiciona parametros do programa
         adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_parametro);
         
         token = obterToken(arquivo);
-        if (token.t!=virgula && token.t!=fechaparenteses)
-        {
+        if (token.t != virgula && token.t != fechaparenteses) {
             printf("Esperava-se um virgula ou um fecha parenteses!\n");
             exit(1);
         }
     }
 
     token = obterToken(arquivo);
-    if (token.t!=pontoevirgula)
-    {
+    if (token.t != pontoevirgula) {
         printf("Esperava-se um ponto e virgula!\n");
         exit(1);
     }
-    
+
+    // muda escopo
     escopo++;
-    compilaBloco(arquivo);
+    compilaBloco(arquivo); // compilaa o bloco principal do programa
+    apagaEscopoTabelaSimbolos(escopo);
     escopo--;
 
     token = obterToken(arquivo);
-    if (token.t!=ponto)
-    {
-        printf("Esperava-se um ponto final!\n");
+    if (token.t != ponto) {
+        printf("Esperava-se um ponto final ao término do programa!\n");
         exit(1);
     }
-
-    token = obterToken(arquivo);
-    if (token.t!=fimdearquivo)
-    {
-        printf("Esperava-se fim de arquivo!\n");
-        exit(1);
-    }
-
+    
     printf("Programa sintaticamente correto!\n");
 }
