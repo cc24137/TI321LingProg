@@ -95,7 +95,7 @@ typedef enum {
 typedef struct {
     char nome[100];
     char tipo[100];
-    naturezas natureza; 
+    naturezas natureza;
     unsigned int endereco;
     char escopo;
 } simbolo;

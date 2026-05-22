@@ -53,7 +53,7 @@ char ehSeparador(char c) {
 
 
 token qualToken(char *palavra) {
-    if (palavra[0] >= '0' && palavra[0] <= '9') 
+    if (palavra[0] >= '0' && palavra[0] <= '9')
         return numero;
     for (int i = 0; i < 64; i++) {
         if (strcmp(palavra, palavras[i]) == 0) {
@@ -75,7 +75,7 @@ int qualNum(char *numero) {
     int num = 0;
     int l = strlen(numero);
     for (int i = l; i>0; i--){
-        num += (numero[i-1] - '0') * potencia(10, l - i);         
+        num += (numero[i-1] - '0') * potencia(10, l - i);
     }
     return num;
 }
@@ -87,7 +87,7 @@ anaLexReturn anaLex(FILE* arquivo) {
     char string[100];
     char c = fgetc(arquivo);
     char i = 0;
-    
+
     // pula todos os separadores
     while (c != EOF && ehSeparador(c)) {
         c = fgetc(arquivo);
@@ -112,11 +112,11 @@ anaLexReturn anaLex(FILE* arquivo) {
         if (t == identificador){
             strcpy(ret.palavra, string);
         }
-        
+
         ret.t = t;
         return ret;
     }
-    
+
     // número
     if (ehNumero(c)) {
         string[i++] = c;
@@ -125,16 +125,16 @@ anaLexReturn anaLex(FILE* arquivo) {
         }
         fseek(arquivo, -1, SEEK_CUR);
         string[i] = '\0';
-        
+
         ret.t = numero;
         ret.num = qualNum(string);
         return ret;
     }
-    
+
     if (ehSimboloUnico(c)){
         char s[2] = {c, '\0'};
         ret.t = qualToken(s);
-        
+
         if (ret.t == abreparenteses) {
             // verifica por comentario (*comentario*)
             char caracter = fgetc(arquivo);
@@ -160,24 +160,24 @@ anaLexReturn anaLex(FILE* arquivo) {
                 ungetc(caracter, arquivo);
             }
         }
-        
+
         return ret;
     }
-    
+
     if (ehSimboloInicial(c)){
         char prox = fgetc(arquivo);
         // precisa de 3 caracteres para incluir o \0
-        char s[3] = {c, prox, '\0'}; 
-        
+        char s[3] = {c, prox, '\0'};
+
         token t = qualToken(s);
-        
+
         if (t != identificador){
             ret.t = t;
         }
         else {
             // Se falhou o composto
             // corta a string e devolve o prox pro buffer
-            s[1] = '\0'; 
+            s[1] = '\0';
             token t = qualToken(s);
             ungetc(prox, arquivo);
             ret.t = t;

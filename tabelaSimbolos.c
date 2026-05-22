@@ -7,7 +7,7 @@
 
 #define MAX_SIMBOLOS 1000
 simbolo tabela_simbolos[MAX_SIMBOLOS];
-int topo = 0; 
+int topo = 0;
 
 char temNaTabelaSimbolos(char *nome) {
     for (int i = topo - 1; i >= 0; i--) {
@@ -23,23 +23,22 @@ void adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas nat
         printf("Tabela de simbolos cheia!\n");
         exit(1);
     }
-    
-    
+
+
     // insere direto no topo
     strcpy(tabela_simbolos[topo].nome, nome);
     strcpy(tabela_simbolos[topo].tipo, tipo); // se não tiver tipo, espera-se receber ""(string vazia)
-    //printf("Colocou as strings\n");
     tabela_simbolos[topo].escopo = escopo;
     tabela_simbolos[topo].natureza = natureza;
     // colocar endereço depois;
-    
+
     topo++;
 }
 
 void apagaEscopoTabelaSimbolos(char escopo) {
     // recua o topo ate o fim do escopo para "apagar o escopo"
     while (topo > 0 && tabela_simbolos[topo - 1].escopo == escopo) {
-        topo--; 
+        topo--;
     }
 }
 
@@ -56,8 +55,8 @@ naturezas obterNaturezaNaTabela(char *nome) {
             return tabela_simbolos[i].natureza;
         }
     }
-    
-    return -1; 
+
+    return -1;
 }
 
 char* obterTipoNaTabela(char *nome) {
@@ -66,6 +65,6 @@ char* obterTipoNaTabela(char *nome) {
             return tabela_simbolos[i].tipo;
         }
     }
-    
+
     return "";
 }
