@@ -50,3 +50,12 @@ void printaTabela(){
     }
 }
 
+naturezas obterNaturezaNaTabela(char *nome) {
+    for (int i = topo - 1; i >= 0; i--) {
+        if (strcmp(tabela_simbolos[i].nome, nome) == 0) {
+            return tabela_simbolos[i].natureza;
+        }
+    }
+    
+    return -1; 
+}
