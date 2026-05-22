@@ -30,6 +30,13 @@ int compilaParametrosFormais(FILE *arquivo) {
                 exit(1);
             }
             
+            // cria vetor para guardar identificadores dos parametros da mesma linha
+            // faz isso para só depois guardar todos eles na tabela de símbolos
+            int idxParams = 0;
+            char* paramsTemporarios[20];
+            paramsTemporarios[idxParams] = (char*) malloc(100);
+            strcpy(paramsTemporarios[idxParams++], token.palavra);
+
             token = obterToken(arquivo); 
             while (token.t == virgula) {
                 token = obterToken(arquivo); 
@@ -37,8 +44,16 @@ int compilaParametrosFormais(FILE *arquivo) {
                     printf("Esperava-se um identificador após a vírgula!\n");
                     exit(1);
                 }
+                
+                // guarda os proximos identificadores
+                paramsTemporarios[idxParams] = (char*) malloc(100);
+                strcpy(paramsTemporarios[idxParams++], token.palavra);
+                
                 token = obterToken(arquivo); 
             }
+            
+            // guardar o tipo dos parametros -> tem que ser vazio para procedure
+            char tipoParametro[100] = "";
             
             if (!ehProcedure) {
                 if (token.t != doispontos) {
@@ -52,7 +67,20 @@ int compilaParametrosFormais(FILE *arquivo) {
                     exit(1);
                 }
                 
+                // copia o nome do tipo que leu 
+                if (token.t == identificador) {
+                    strcpy(tipoParametro, token.palavra);
+                } else {
+                    strcpy(tipoParametro, palavras[token.t]);
+                }
+                
                 token = obterToken(arquivo);
+            }
+            
+            // salva todos os parametros na tabela no escopo atual
+            for (int i = 0; i < idxParams; i++) {
+                adicionaNaTabelaSimbolos(paramsTemporarios[i], tipoParametro, escopo, natureza_parametro);
+                free(paramsTemporarios[i]);
             }
             
         } while (token.t == pontoevirgula);
@@ -312,9 +340,6 @@ int compilaBloco(FILE *arquivo) {
         devolverToken(token);
     }
 
-    // pelo que entendi esse bloco seguinte é um aliasing. Exemplo:
-    // type Identificador = string;
-    // REVISAR ESSE PRA VER SE É ISSO mesmo
     token = obterToken(arquivo);
     while (token.t == tipo) {
         token = obterToken(arquivo);
@@ -324,38 +349,31 @@ int compilaBloco(FILE *arquivo) {
         }
 
         while (token.t == identificador) {
-            char* nomeDoTipoNovo = (char*) malloc(sizeof(100));
-            //printf("Chegou na definição de tipos\n");
+            char* nomeDoTipoNovo = (char*) malloc(100);
             strcpy(nomeDoTipoNovo, token.palavra);
-            //printf("Copiou para a variável\n");
-            //printf("%s\n", nomeDoTipoNovo);
-            // ja leu o proximo token
+            
             if (token.t != identificador) {
                 printf("Esperava-se um identificador!\n");
                 exit(1);
             }
 
             token = obterToken(arquivo);
-            //printf("%s\n", nomeDoTipoNovo);
             if (token.t != atribuicao) {
                 printf("Esperava-se um sinal de atribuição!\n");
                 exit(1);
             }
 
-            // REVISAR OS TIPOS ACEITOS
-            token = obterToken(arquivo); // sera que pode ser algo tipo struct também nos tipos?
+            token = obterToken(arquivo); 
             if (token.t != inteiro && token.t != longo && token.t != curto && token.t != flutuante && token.t != duplo && token.t != caractere) {
                 printf("Esperava-se um tipo! 1\n");
-                //printf("%d", token.t);
                 exit(1);
             }
-            //printf("Nome do tipo novo: %s\n", nomeDoTipoNovo);
+            
             adicionaNaTabelaSimbolos(nomeDoTipoNovo, palavras[token.t], escopo, natureza_tipo);
             free(nomeDoTipoNovo);
             
 
             token = obterToken(arquivo);
-            //printaTabela();
             if (token.t != virgula && token.t != pontoevirgula) {
                 printf("Esperava-se uma vírgula ou um ponto e vírgula!\n");
                 exit(1);
@@ -366,8 +384,6 @@ int compilaBloco(FILE *arquivo) {
         }
     }
     devolverToken(token);
-
-    //printaTabela();
 
     token = obterToken(arquivo);
     if (token.t == variavel) {
@@ -398,9 +414,7 @@ int compilaBloco(FILE *arquivo) {
                 variaveis[idxVariaveis++] = nomeDaVariavel;
                 
                 token = obterToken(arquivo);
-                // preparou para proximo identificador
             }
-            // devolve o que leu a mais para verificar o while
             devolverToken(token);
 
             token = obterToken(arquivo);
@@ -445,22 +459,38 @@ int compilaBloco(FILE *arquivo) {
     token = obterToken(arquivo);
     while (token.t == procedimento || token.t == funcao) {
 
-        if (token.t == procedimento) {
+        // usa int para evitar conlito com a variavel de tokens opsss
+        // guarda o tipo da sub-rotina para usar depois na hora de salvar a assinatura na tabela de simbolos
+        int tipoSubrotina = token.t;
+        char nomeSubrotina[100];
+
+        if (tipoSubrotina == procedimento) {
             token = obterToken(arquivo);
             if (token.t != identificador) {
                 printf("Esperava-se um identificador!\n");
                 exit(1);
             }
+            // salva o nome
+            strcpy(nomeSubrotina, token.palavra);
+            
+            // adiciona a assinatura no escopo pai
+            // entra no novo escopo
+            adicionaNaTabelaSimbolos(nomeSubrotina, "", escopo, natureza_procedimento);
+            escopo++; 
 
             compilaParametrosFormais(arquivo);
         }
 
-        if (token.t == funcao) {
+        if (tipoSubrotina == funcao) {
             token = obterToken(arquivo);
             if (token.t != identificador) {
                 printf("Esperava-se um identificador!\n");
                 exit(1);
             }
+            strcpy(nomeSubrotina, token.palavra);
+            
+            adicionaNaTabelaSimbolos(nomeSubrotina, "", escopo, natureza_funcao);
+            escopo++;
 
             compilaParametrosFormais(arquivo);
 
@@ -490,6 +520,10 @@ int compilaBloco(FILE *arquivo) {
             printf("Esperava-se um ponto e vírgula!\n");
             exit(1);
         }
+        
+        // limpa o escopo atuak
+        apagaEscopoTabelaSimbolos(escopo);
+        escopo--;
 
         // le para possível processo ou funcao seguinte
         token = obterToken(arquivo);
@@ -575,6 +609,13 @@ void compilaPrograma(FILE *arquivo) {
     token = obterToken(arquivo);
     if (token.t != ponto) {
         printf("Esperava-se um ponto final ao término do programa!\n");
+        exit(1);
+    }
+
+    token = obterToken(arquivo);
+    if (token.t!=fimdearquivo)
+    {
+        printf("Esperava-se fim de arquivo!\n");
         exit(1);
     }
     
