@@ -272,8 +272,11 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             exit(1);
         }
 
+        char abriuColchete = 0;
+
         token = obterToken(arquivo);
         while (token.t == abrecolchetes) {
+            abriuColchete = 1;
             do {
                 compilaExpressao(arquivo);
                 token = obterToken(arquivo);
@@ -296,12 +299,9 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 printf("Esperava-se fechaparenteses!\n");
                 exit(1);
             }
-            token = obterToken(arquivo);
+            return 1;
         }
 
-        devolverToken(token);
-
-        token = obterToken(arquivo);
         if (token.t == atribuicao) {
             // verificacao semantica de atribuição -> garante que o identificador é uma variável e não um procedimento ou programa
             naturezas nat = obterNaturezaNaTabela(nomeAlvoAtribuicao);
@@ -321,6 +321,10 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             }
         }
         else {
+            if (abriuColchete){
+                printf("Esperava-se uma atribuição!\n");
+                exit(1);
+            }
             devolverToken(token);
         }
     }
