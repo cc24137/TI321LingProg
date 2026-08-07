@@ -530,6 +530,8 @@ int compilaBloco(FILE *arquivo) {
                 free(variaveis[i]);
             }
 
+            idxVariaveis = 0;
+
             token = obterToken(arquivo);
             if (token.t != pontoevirgula) {
                 printf("Esperava-se um ponto e vírgula!\n");
