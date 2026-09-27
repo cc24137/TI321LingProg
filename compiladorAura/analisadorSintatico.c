@@ -353,15 +353,21 @@ int compilaComandoSemRotulo(FILE *arquivo) {
 
     else if (token.t == se) {
         compilaExpressao(arquivo);
-
+    
+        // verifica se a condição do if é booleana
+        if (strcmp(tipo_expressao_atual, "boolean") != 0) {
+            printf("Erro Semântico: A condição do IF deve ser booleana!\n");
+            exit(1);
+        }
+    
         token = obterToken(arquivo);
         if (token.t != entao) {
             printf("Esperava-se então (then)!\n");
             exit(1);
         }
-
+    
         compilaComandoSemRotulo(arquivo);
-
+    
         token = obterToken(arquivo);
         if (token.t == senao) {
             compilaComandoSemRotulo(arquivo);
