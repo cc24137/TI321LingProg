@@ -100,4 +100,12 @@ typedef struct {
     char escopo;
 } simbolo;
 
+typedef struct {
+    char tipo[100];
+    char ehRef;
+    char nomeFuncOuProc[100]; // o nome do proc/func desse parâmetro
+    char ehFunc;
+    char ehProc;
+} descricaoParametro;
+
 #endif

@@ -6,23 +6,34 @@
 #include "tokens.h"
 #include <stdlib.h>
 #include "tabelaSimbolos.h"
+#include "descricaoParametros.h"
 
 char escopo = 0;
 char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
 
-int compilaParametrosFormais(FILE *arquivo) {
+int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
     anaLexReturn token = obterToken(arquivo);
+    descricaoParametro descParam;
+    strcpy(descParam.nomeFuncOuProc, nomeFuncOuProc);
+    
     if (token.t == abreparenteses) {
         do {
+            descParam.ehFunc = 0;
+            descParam.ehProc = 0;
+            descParam.ehRef = 0;
+
             token = obterToken(arquivo);
             int ehProcedure = 0;
 
             if (token.t == funcao) {
+                descParam.ehFunc = 1;
                 token = obterToken(arquivo);
             } else if (token.t == procedimento) {
+                descParam.ehProc = 1;
                 ehProcedure = 1;
                 token = obterToken(arquivo);
             } else if (token.t == variavel) {
+                descParam.ehRef = 1;
                 token = obterToken(arquivo);
             }
 
@@ -81,6 +92,7 @@ int compilaParametrosFormais(FILE *arquivo) {
             // salva todos os parametros na tabela no escopo atual
             for (int i = 0; i < idxParams; i++) {
                 adicionaNaTabelaSimbolos(paramsTemporarios[i], tipoParametro, escopo, natureza_parametro);
+                inserereNovoParametro(descParam.nomeFuncOuProc, tipoParametro, descParam.ehRef, descParam.ehProc, descParam.ehFunc);
                 free(paramsTemporarios[i]);
             }
 
@@ -259,6 +271,50 @@ int compilaExpressao(FILE *arquivo) {
     return 1;
 }
 
+void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao){
+    descricaoParametro dsp = obtemDescricao(nomeFuncOuProc, posicao);
+
+    if (dsp.ehFunc || dsp.ehProc || dsp.ehRef){
+        anaLexReturn token = obterToken(arquivo);
+        if (token.t != identificador){
+            printf("Esse parâmetro tem que ser identificador");
+        }
+        
+        naturezas nat = obterNaturezaNaTabela(token.palavra);
+
+        if (dsp.ehFunc && nat != natureza_funcao){
+            printf("Esse parâmetro tem que ser função.");
+            exit(1);
+        }
+
+        if (dsp.ehProc && nat != natureza_procedimento){
+            printf("Esse parâmetro tem que ser procedimento.");
+            exit(1);
+        }
+
+        if (dsp.ehRef){
+            if (nat != natureza_parametro && nat != natureza_variavel){
+                printf("Parâmetro por referência precisa receber variável.");
+                exit(1);
+            }
+            char* tipo = obterTipoNaTabela(token.palavra);
+            if (strcmp(tipo, dsp.tipo) != 0){
+                printf("O tipo da variável passada não corresponde ao tipo esperado.");
+                exit(1);
+            }
+        }
+    }
+    else{ // nesse caso, o parâmetro é um valor (variável sem ser por referência)
+        compilaExpressao(arquivo);
+        if (strcmp(tipo_expressao_atual, dsp.tipo) != 0){
+            printf("A expressão não é compatível com o tipo de parâmetro esperado.");
+            exit(1);
+        }
+    }
+
+}
+
+
 int compilaComandoSemRotulo(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
     if (token.t == identificador) {
@@ -290,9 +346,12 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         }
 
         if (token.t == abreparenteses) {
+            int posicao = 0;
             do {
                 compilaExpressao(arquivo);
+                //compilaParametroNaChamada(arquivo, nomeAlvoAtribuicao, posicao);
                 token = obterToken(arquivo);
+                posicao++;
             } while (token.t == virgula);
 
             if (token.t != fechaparenteses) {
@@ -575,7 +634,7 @@ int compilaBloco(FILE *arquivo) {
             adicionaNaTabelaSimbolos(nomeSubrotina, "", escopo, natureza_procedimento);
             escopo++;
 
-            compilaParametrosFormais(arquivo);
+            compilaParametrosFormais(arquivo, nomeSubrotina);
         }
 
         if (tipoSubrotina == funcao) {
@@ -587,7 +646,7 @@ int compilaBloco(FILE *arquivo) {
             strcpy(nomeSubrotina, token.palavra);
 
             escopo++;
-            compilaParametrosFormais(arquivo);
+            compilaParametrosFormais(arquivo, nomeSubrotina);
 
             token = obterToken(arquivo);
             if (token.t != doispontos) {
@@ -728,4 +787,6 @@ void compilaPrograma(FILE *arquivo) {
     }
 
     printf("Programa sintaticamente correto!\n");
+
+    printaAI();
 }

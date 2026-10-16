@@ -4,7 +4,7 @@
 #define analisadorSintatico_h
 
 void compilaPrograma(FILE* arquivo);
-int compilaParametrosFormais(FILE *arquivo);
+int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc);
 int compilaFator(FILE *arquivo);
 int compilaTermo(FILE *arquivo);
 int compilaExpressaoSimples(FILE *arquivo);
