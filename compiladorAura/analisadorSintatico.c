@@ -317,11 +317,19 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
 
 int compilaComandoSemRotulo(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
+
+    printf("Token inicial do comando sem rótulo atual: %d\n", token.t);
+    if (token.t == 40){
+        printf("Token 40: %s\n", palavras[40]);
+    }
+
     if (token.t == identificador) {
 
         // verificação semântica no comando de atribuição -> garante que o identificador existe
         char nomeAlvoAtribuicao[100];
         strcpy(nomeAlvoAtribuicao, token.palavra);
+
+        printf("Comando sem rótulo começando com identificador. Palavra: %s\n", nomeAlvoAtribuicao);
 
         if (!temNaTabelaSimbolos(nomeAlvoAtribuicao)) {
             printf("Erro Semântico: Variável ou Procedimento '%s' não declarado!\n", nomeAlvoAtribuicao);
@@ -329,6 +337,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         }
 
         char abriuColchete = 0;
+        char teveAtribuicao = 0;
 
         token = obterToken(arquivo);
         while (token.t == abrecolchetes) {
@@ -348,8 +357,8 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         if (token.t == abreparenteses) {
             int posicao = 0;
             do {
-                compilaExpressao(arquivo);
-                //compilaParametroNaChamada(arquivo, nomeAlvoAtribuicao, posicao);
+                //compilaExpressao(arquivo);
+                compilaParametroNaChamada(arquivo, nomeAlvoAtribuicao, posicao);
                 token = obterToken(arquivo);
                 posicao++;
             } while (token.t == virgula);
@@ -362,6 +371,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         }
 
         if (token.t == atribuicao) {
+            teveAtribuicao = 1;
             // verificacao semantica de atribuição -> garante que o identificador é uma variável e não um procedimento ou programa
             naturezas nat = obterNaturezaNaTabela(nomeAlvoAtribuicao);
             if (nat == natureza_nomePrograma || nat == natureza_procedimento) {
@@ -383,6 +393,18 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             if (abriuColchete){
                 printf("Esperava-se uma atribuição!\n");
                 exit(1);
+            }
+            else {
+                printf("Entrou no else do identificador. Identificador: %s\n", nomeAlvoAtribuicao);
+                naturezas nat = obterNaturezaNaTabela(nomeAlvoAtribuicao);
+                if (nat != natureza_funcao && nat != natureza_procedimento) {
+                    printf("Só se pode chamar funções ou procedimentos. %s não é nem um nem outro.\n", nomeAlvoAtribuicao);
+                    exit(1);
+                }
+                if (temParametro(nomeAlvoAtribuicao)){
+                    printf("Esperava-se parâmetro(s) para a função ou procedimento %s\n", nomeAlvoAtribuicao);
+                    exit(1);
+                }
             }
             devolverToken(token);
         }
@@ -452,6 +474,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         printf("Esperava-se um comando sem rótulo válido!\n");
         exit(1);
     }
+
     return 1;
 }
 
@@ -737,6 +760,10 @@ void compilaPrograma(FILE *arquivo) {
     adicionaNaTabelaSimbolos("read", "", escopo, natureza_procedimento);
     adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
 
+    inserereNovoParametro("read", "integer", 1, 0, 0);
+    inserereNovoParametro("write", "integer", 1, 0, 0);
+
+
     token = obterToken(arquivo);
     if (token.t != abreparenteses) {
         printf("Esperava-se um abre parenteses!\n");
@@ -786,7 +813,7 @@ void compilaPrograma(FILE *arquivo) {
         exit(1);
     }
 
-    printf("Programa sintaticamente correto!\n");
+    printf("Programa sintática e semanticamente correto!\n");
 
-    printaAI();
+    //printaAi();
 }

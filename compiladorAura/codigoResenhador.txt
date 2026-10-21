@@ -33,5 +33,5 @@ program exemplo12(input,output);
 
 begin
     read(x);
-    p
+    p(x);
 end.

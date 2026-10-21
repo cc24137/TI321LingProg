@@ -30,17 +30,30 @@ char verificaParametro(char* nomeFuncOuProc, char* tipo, int ordem, char ehRefer
     return 0;
 }
 
-descricaoParametro obtemDescricao(char* nomeFuncOuProc, int ordem){
+char temParametro(char* nomeFuncOuProc){
     for (int i=0; i<topoParams; i++){
         if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
-            i += ordem;
+            return 1;
         }
+    }
+    return 0;
+}
+
+descricaoParametro obtemDescricao(char* nomeFuncOuProc, int ordem){
+    //printf("Descrição do parâmetro %d da func/proc %s \n", ordem, nomeFuncOuProc);
+    for (int i=0; i<topoParams; i++){
+
         if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
-            return descParametros[i];
-        }
-        else{
-            printf("Esse função ou procedimento não tem tantos parâmetros;\n");
-            exit(1);
+            //printf("%d\n", i);
+            i += ordem;
+            if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
+                //printf("%d\n", i);
+                return descParametros[i];
+            }
+            else{
+                printf("Esse função ou procedimento %s não tem tantos parâmetros;\n", nomeFuncOuProc);
+                exit(1);
+            }
         }
     }
     printf("Esse nome de função/proc não existe\n");
@@ -48,7 +61,7 @@ descricaoParametro obtemDescricao(char* nomeFuncOuProc, int ordem){
 }
 
 void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, char ehReferencia, char ehProcedure, char ehFuncao){
-    printf("Insere parâmetro chamado. \n");
+    //printf("Insere parâmetro chamado. \n");
     if (topoParams == MAX_PARAMETROS){
         printf("Estourou o limite de parâmetros.\n");
         exit(1);  
@@ -68,7 +81,7 @@ void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, char ehReferencia, 
     topoParams++;
 } 
 
-void printaAI(){
+void printaAi(){
     printf("Descrição dos parâmetros: \n");
     for (int i=0; i<topoParams; i++){
         printf("nomeFunc/Proc: %s; tipo: %s; ehRef, ehFunc, ehProc: %d, %d, %d \n ", descParametros[i].nomeFuncOuProc, 
