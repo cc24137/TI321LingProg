@@ -367,6 +367,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 printf("Esperava-se fechaparenteses!\n");
                 exit(1);
             }
+
             return 1;
         }
 
@@ -480,6 +481,12 @@ int compilaComandoSemRotulo(FILE *arquivo) {
 
 int compilaComando(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
+
+    if (token.t == fim){
+        devolverToken(token);
+        return 0;
+    }
+
     if (token.t == numero) {
         token = obterToken(arquivo);
         if (token.t != doispontos) {
@@ -721,6 +728,7 @@ int compilaBloco(FILE *arquivo) {
 
         token = obterToken(arquivo);
         while (token.t != fim) {
+            //printf("Token que não é fim: %s\n", palavras[token.t]);
             if (token.t != pontoevirgula) {
                 if (token.t == doispontos) {
                     printf("Esperava-se atribuição!\n");
