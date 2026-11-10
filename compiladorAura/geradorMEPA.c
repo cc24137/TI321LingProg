@@ -6,6 +6,21 @@
 static FILE *arquivoMEPA = NULL;
 static int contadorRotulos = 0;
 
+static const char *const operacoesMEPA[] = {
+    [mais] = "SOMA",
+    [menos] = "SUBT",
+    [asterisco] = "MULT",
+    [dividir] = "DIVI",
+    [e] = "CONJ",
+    [ou] = "DISJ",
+    [igual] = "CMIG",
+    [diferente] = "CMDG",
+    [menor] = "CMME",
+    [maior] = "CMMA",
+    [menorouigual] = "CMEG",
+    [maiorouigual] = "CMAG"
+};
+
 // Abre o arquivo que receberá as instruções
 int iniciarMEPA(const char *nomeArquivo) {
     arquivoMEPA = fopen(nomeArquivo, "w");
@@ -33,6 +48,16 @@ void emitirMEPA(const char *formato, ...) {
     va_end(argumentos);
 
     fprintf(arquivoMEPA, "\n");
+}
+
+void emitirOperacaoMEPA(token operador) {
+    if ((unsigned int)operador >= sizeof operacoesMEPA / sizeof operacoesMEPA[0] ||
+        operacoesMEPA[operador] == NULL) {
+        fprintf(stderr, "Erro: operador MEPA inválido (%d).\n", (int)operador);
+        exit(1);
+    }
+
+    emitirMEPA("%s", operacoesMEPA[operador]);
 }
 
 // Retorna um novo identificador de rótulo

@@ -1,6 +1,7 @@
 #include "tipos.h"
 #include "tokens.h"
 #include "analisadorLexico.h"
+#include "tabelaSimbolos.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,16 +10,20 @@
 simbolo tabela_simbolos[MAX_SIMBOLOS];
 int topo = 0;
 
-char temNaTabelaSimbolos(char *nome) {
+simbolo *buscarNaTabelaSimbolos(const char *nome) {
     for (int i = topo - 1; i >= 0; i--) {
         if (strcmp(tabela_simbolos[i].nome, nome) == 0) {
-            return 1;
+            return &tabela_simbolos[i];
         }
     }
-    return 0;
+    return NULL;
 }
 
-void adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas natureza) {
+char temNaTabelaSimbolos(char *nome) {
+    return buscarNaTabelaSimbolos(nome) != NULL;
+}
+
+simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas natureza) {
     if (topo >= MAX_SIMBOLOS) {
         printf("Tabela de simbolos cheia!\n");
         exit(1);
@@ -26,13 +31,14 @@ void adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas nat
 
 
     // insere direto no topo
-    strcpy(tabela_simbolos[topo].nome, nome);
-    strcpy(tabela_simbolos[topo].tipo, tipo); // se não tiver tipo, espera-se receber ""(string vazia)
-    tabela_simbolos[topo].escopo = escopo;
-    tabela_simbolos[topo].natureza = natureza;
-    // colocar endereço depois;
-
+    simbolo *novo = &tabela_simbolos[topo];
+    strcpy(novo->nome, nome);
+    strcpy(novo->tipo, tipo);
+    novo->escopo = escopo;
+    novo->natureza = natureza;
+    novo->endereco = 0;
     topo++;
+    return novo;
 }
 
 void apagaEscopoTabelaSimbolos(char escopo) {
@@ -50,21 +56,14 @@ void printaTabela(){
 }
 
 naturezas obterNaturezaNaTabela(char *nome) {
-    for (int i = topo - 1; i >= 0; i--) {
-        if (strcmp(tabela_simbolos[i].nome, nome) == 0) {
-            return tabela_simbolos[i].natureza;
-        }
+    const simbolo *encontrado = buscarNaTabelaSimbolos(nome);
+    if (encontrado != NULL) {
+        return encontrado->natureza;
     }
-
     return -1;
 }
 
 char* obterTipoNaTabela(char *nome) {
-    for (int i = topo - 1; i >= 0; i--) {
-        if (strcmp(tabela_simbolos[i].nome, nome) == 0) {
-            return tabela_simbolos[i].tipo;
-        }
-    }
-
-    return "";
+    simbolo *encontrado = buscarNaTabelaSimbolos(nome);
+    return encontrado != NULL ? encontrado->tipo : "";
 }

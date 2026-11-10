@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "tabelaSimbolos.h"
 #include "descricaoParametros.h"
+#include "geradorMEPA.h"
 
 char escopo = 0;
 char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
@@ -112,25 +113,32 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
 
 int compilaFator(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
+    int gerouValor = 0;
 
     if (token.t == identificador) {
 
         // verificação semântica no fator -> garannte que o identificador existe e que não é um programa ou procedimento
-        if (!temNaTabelaSimbolos(token.palavra)) {
+        const simbolo *declaracao = buscarNaTabelaSimbolos(token.palavra);
+        if (declaracao == NULL) {
             printf("Erro Semântico: Identificador '%s' não foi declarado!\n", token.palavra);
             exit(1);
         }
 
-        naturezas nat = obterNaturezaNaTabela(token.palavra);
+        naturezas nat = declaracao->natureza;
         if (nat == natureza_nomePrograma || nat == natureza_procedimento) {
             printf("Erro Semântico: Uso inválido! O identificador '%s' não pode ser usado dentro de uma expressão matemática/lógica.\n", token.palavra);
             exit(1);
         }
 
         char tipoOriginalFator[100];
-        strcpy(tipoOriginalFator, obterTipoNaTabela(token.palavra));
+        strcpy(tipoOriginalFator, declaracao->tipo);
 
         token = obterToken(arquivo);
+
+        if (nat == natureza_variavel && token.t != abrecolchetes && token.t != abreparenteses) {
+            emitirMEPA("CRVL %d, %u", declaracao->escopo - 1, declaracao->endereco);
+            gerouValor = 1;
+        }
 
         while (token.t == abrecolchetes) {
             do {
@@ -166,9 +174,11 @@ int compilaFator(FILE *arquivo) {
     else if (token.t == numero) {
         // tipo inteiro para numeros
         strcpy(tipo_expressao_atual, palavras[inteiro]);
+        emitirMEPA("CRCT %d", token.num);
+        gerouValor = 1;
     }
     else if (token.t == abreparenteses) {
-        compilaExpressao(arquivo);
+        gerouValor = compilaExpressao(arquivo);
         token = obterToken(arquivo);
         if (token.t != fechaparenteses) {
             printf("Esperava-se fechaparenteses!\n");
@@ -176,18 +186,21 @@ int compilaFator(FILE *arquivo) {
         }
     }
     else if (token.t == nao) {
-        compilaFator(arquivo);
+        gerouValor = compilaFator(arquivo);
+        if (gerouValor) {
+            emitirMEPA("NEGA");
+        }
     }
     else {
         printf("Esperava-se um fator valido!\n");
         exit(1);
     }
 
-    return 1;
+    return gerouValor;
 }
 
 int compilaTermo(FILE *arquivo) {
-    compilaFator(arquivo);
+    int gerouValor = compilaFator(arquivo);
 
     // salva o tipo esquerdo antes de possíveis multiplicações/divisões/and
     char tipoEsq[100];
@@ -195,7 +208,7 @@ int compilaTermo(FILE *arquivo) {
 
     anaLexReturn token = obterToken(arquivo);
     while (token.t == asterisco || token.t == dividir || token.t == e) {
-        compilaFator(arquivo);
+        int gerouDireito = compilaFator(arquivo);
 
         // verifica com o tipo direito
         char tipoDir[100];
@@ -205,21 +218,30 @@ int compilaTermo(FILE *arquivo) {
             exit(1);
         }
 
+        gerouValor = gerouValor && gerouDireito;
+        if (gerouValor) {
+            emitirOperacaoMEPA(token.t);
+        }
+
         token = obterToken(arquivo);
     }
      devolverToken(token);
 
-    return 1;
+    return gerouValor;
 }
 
 int compilaExpressaoSimples(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
+    int inverteSinal = token.t == menos;
 
     if (token.t != mais && token.t != menos) {
        devolverToken(token);
     }
 
-    compilaTermo(arquivo);
+    int gerouValor = compilaTermo(arquivo);
+    if (gerouValor && inverteSinal) {
+        emitirMEPA("INVR");
+    }
 
     // salva o tipo esquerdo
     char tipoEsq[100];
@@ -227,7 +249,7 @@ int compilaExpressaoSimples(FILE *arquivo) {
 
     token = obterToken(arquivo);
     while (token.t == mais || token.t == menos || token.t == ou) {
-        compilaTermo(arquivo);
+        int gerouDireito = compilaTermo(arquivo);
 
         // verifica com o tipo direito da expressao
         char tipoDir[100];
@@ -237,15 +259,20 @@ int compilaExpressaoSimples(FILE *arquivo) {
             exit(1);
         }
 
+        gerouValor = gerouValor && gerouDireito;
+        if (gerouValor) {
+            emitirOperacaoMEPA(token.t);
+        }
+
         token = obterToken(arquivo);
     }
      devolverToken(token);
 
-    return 1;
+    return gerouValor;
 }
 
 int compilaExpressao(FILE *arquivo) {
-    compilaExpressaoSimples(arquivo);
+    int gerouValor = compilaExpressaoSimples(arquivo);
 
     // tipo esquerdo
     char tipoEsq[100];
@@ -253,7 +280,7 @@ int compilaExpressao(FILE *arquivo) {
 
     anaLexReturn token = obterToken(arquivo);
     if (token.t == igual || token.t == diferente || token.t == menor || token.t == maior || token.t == menorouigual || token.t == maiorouigual) {
-        compilaExpressaoSimples(arquivo);
+        int gerouDireito = compilaExpressaoSimples(arquivo);
 
         // compara tipos e transforma resultado em booleano
         char tipoDir[100];
@@ -264,11 +291,15 @@ int compilaExpressao(FILE *arquivo) {
         }
         strcpy(tipo_expressao_atual, "boolean");
 
+        gerouValor = gerouValor && gerouDireito;
+        if (gerouValor) {
+            emitirOperacaoMEPA(token.t);
+        }
     } else {
         devolverToken(token);
     }
 
-    return 1;
+    return gerouValor;
 }
 
 void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao){
@@ -331,13 +362,13 @@ int compilaComandoSemRotulo(FILE *arquivo) {
 
         printf("Comando sem rótulo começando com identificador. Palavra: %s\n", nomeAlvoAtribuicao);
 
-        if (!temNaTabelaSimbolos(nomeAlvoAtribuicao)) {
+        const simbolo *declaracao = buscarNaTabelaSimbolos(nomeAlvoAtribuicao);
+        if (declaracao == NULL) {
             printf("Erro Semântico: Variável ou Procedimento '%s' não declarado!\n", nomeAlvoAtribuicao);
             exit(1);
         }
 
         char abriuColchete = 0;
-        char teveAtribuicao = 0;
 
         token = obterToken(arquivo);
         while (token.t == abrecolchetes) {
@@ -372,22 +403,24 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         }
 
         if (token.t == atribuicao) {
-            teveAtribuicao = 1;
             // verificacao semantica de atribuição -> garante que o identificador é uma variável e não um procedimento ou programa
-            naturezas nat = obterNaturezaNaTabela(nomeAlvoAtribuicao);
+            naturezas nat = declaracao->natureza;
             if (nat == natureza_nomePrograma || nat == natureza_procedimento) {
                 printf("Erro Semântico: Impossível atribuir valor a '%s', pois ele é um Programa ou Procedimento!\n", nomeAlvoAtribuicao);
                 exit(1);
             }
 
-            compilaExpressao(arquivo);
+            int gerouValor = compilaExpressao(arquivo);
 
             // verifica o tipo da atribuição
-            char* tipoVariavelDestino = obterTipoNaTabela(nomeAlvoAtribuicao);
+            const char *tipoVariavelDestino = declaracao->tipo;
             if (strcmp(tipoVariavelDestino, tipo_expressao_atual) != 0) {
                 printf("Erro Semântico: Atribuicao invalida! A variavel '%s' e do tipo '%s', mas a expressao enviada a ela e do tipo '%s'.\n",
                         nomeAlvoAtribuicao, tipoVariavelDestino, tipo_expressao_atual);
                 exit(1);
+            }
+            if (gerouValor && nat == natureza_variavel && !abriuColchete) {
+                emitirMEPA("ARMZ %d, %u", declaracao->escopo - 1, declaracao->endereco);
             }
         }
         else {
@@ -397,7 +430,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             }
             else {
                 printf("Entrou no else do identificador. Identificador: %s\n", nomeAlvoAtribuicao);
-                naturezas nat = obterNaturezaNaTabela(nomeAlvoAtribuicao);
+                naturezas nat = declaracao->natureza;
                 if (nat != natureza_funcao && nat != natureza_procedimento) {
                     printf("Só se pode chamar funções ou procedimentos. %s não é nem um nem outro.\n", nomeAlvoAtribuicao);
                     exit(1);
@@ -504,6 +537,7 @@ int compilaComando(FILE *arquivo) {
 }
 
 int compilaBloco(FILE *arquivo) {
+    unsigned int qtdVariaveis = 0;
     anaLexReturn token = obterToken(arquivo);
 
     if (token.t == rotulo) {
@@ -578,14 +612,12 @@ int compilaBloco(FILE *arquivo) {
             exit(1);
         }
 
-        int idxVariaveis = 0;
-        char* variaveis[20];
-
-        char* nomeDaVariavel = (char*) malloc(100);
-        strcpy(nomeDaVariavel, token.palavra);
-        variaveis[idxVariaveis++] = nomeDaVariavel;
-
         while (token.t == identificador) {
+            int idxVariaveis = 0;
+            char* variaveis[20];
+            char* nomeDaVariavel = (char*) malloc(100);
+            strcpy(nomeDaVariavel, token.palavra);
+            variaveis[idxVariaveis++] = nomeDaVariavel;
 
             token = obterToken(arquivo);
             while (token.t == virgula) {
@@ -621,11 +653,11 @@ int compilaBloco(FILE *arquivo) {
             }
 
             for (int i=0; i<idxVariaveis; i++){
-                adicionaNaTabelaSimbolos(variaveis[i], nomeDoTipoDasVariaveis, escopo, natureza_variavel);
+                simbolo *novaVariavel = adicionaNaTabelaSimbolos(
+                    variaveis[i], nomeDoTipoDasVariaveis, escopo, natureza_variavel);
+                novaVariavel->endereco = qtdVariaveis++;
                 free(variaveis[i]);
             }
-
-            idxVariaveis = 0;
 
             token = obterToken(arquivo);
             if (token.t != pontoevirgula) {
@@ -640,6 +672,10 @@ int compilaBloco(FILE *arquivo) {
     }
     else {
         devolverToken(token);
+    }
+
+    if (qtdVariaveis > 0) {
+        emitirMEPA("AMEM %u", qtdVariaveis);
     }
 
     token = obterToken(arquivo);
@@ -745,6 +781,10 @@ int compilaBloco(FILE *arquivo) {
         devolverToken(token);
     }
 
+    if (qtdVariaveis > 0) {
+        emitirMEPA("DMEM %u", qtdVariaveis);
+    }
+
     return 1;
 }
 
@@ -802,9 +842,10 @@ void compilaPrograma(FILE *arquivo) {
         exit(1);
     }
 
-    // muda escopo
+    // O bloco principal entra no escopo 1 da tabela, que corresponde ao nível 0 da MEPA.
+    // Para acessar uma variável na MEPA, use o escopo da declaração menos 1.
     escopo++;
-    compilaBloco(arquivo); // compilaa o bloco principal do programa
+    compilaBloco(arquivo); // compila o bloco principal do programa
     apagaEscopoTabelaSimbolos(escopo);
     escopo--;
 

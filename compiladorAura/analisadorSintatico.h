@@ -5,6 +5,7 @@
 
 void compilaPrograma(FILE* arquivo);
 int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc);
+// Retornam 1 quando a expressão completa deixa um valor na pilha da MEPA.
 int compilaFator(FILE *arquivo);
 int compilaTermo(FILE *arquivo);
 int compilaExpressaoSimples(FILE *arquivo);

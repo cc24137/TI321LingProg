@@ -2,6 +2,7 @@
 #include "analisadorLexico.h"
 #include "tokens.h"
 #include "analisadorSintatico.h"
+#include "geradorMEPA.h"
 
 void escreverTokens(FILE *arquivo) {
     anaLexReturn r = anaLex(arquivo);
@@ -38,8 +39,16 @@ int main(){
         return 2;
     }
 
-    compilaPrograma(arquivo);
+    if (!iniciarMEPA("saida.mepa")) {
+        fprintf(stderr, "Erro ao abrir o arquivo saida.mepa.\n");
+        fclose(arquivo);
+        return 2;
+    }
 
+    emitirMEPA("INPP");
+    compilaPrograma(arquivo);
+    emitirMEPA("PARA");
+    finalizarMEPA();
     fclose(arquivo);
     return 0;
 }
