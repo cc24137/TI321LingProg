@@ -12,6 +12,7 @@
 char escopo = 0;
 char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
 
+
 int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
     anaLexReturn token = obterToken(arquivo);
     descricaoParametro descParam;
@@ -349,7 +350,7 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
 int compilaComandoSemRotulo(FILE *arquivo) {
     anaLexReturn token = obterToken(arquivo);
 
-    printf("Token inicial do comando sem rótulo atual: %d\n", token.t);
+    //printf("Token inicial do comando sem rótulo atual: %d\n", token.t);
     if (token.t == 40){
         printf("Token 40: %s\n", palavras[40]);
     }
@@ -360,7 +361,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         char nomeAlvoAtribuicao[100];
         strcpy(nomeAlvoAtribuicao, token.palavra);
 
-        printf("Comando sem rótulo começando com identificador. Palavra: %s\n", nomeAlvoAtribuicao);
+        //printf("Comando sem rótulo começando com identificador. Palavra: %s\n", nomeAlvoAtribuicao);
 
         const simbolo *declaracao = buscarNaTabelaSimbolos(nomeAlvoAtribuicao);
         if (declaracao == NULL) {
@@ -429,7 +430,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
             else {
-                printf("Entrou no else do identificador. Identificador: %s\n", nomeAlvoAtribuicao);
+                //printf("Entrou no else do identificador. Identificador: %s\n", nomeAlvoAtribuicao);
                 naturezas nat = declaracao->natureza;
                 if (nat != natureza_funcao && nat != natureza_procedimento) {
                     printf("Só se pode chamar funções ou procedimentos. %s não é nem um nem outro.\n", nomeAlvoAtribuicao);
@@ -450,6 +451,9 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             printf("Esperava-se um número!\n");
             exit(1);
         }
+        // falta verificar se o numero em questao ja foi compilado
+        emitirMEPA("DSVS R%d", token.num); // desvio incondicional
+
     }
 
     else if (token.t == inicio) {
@@ -521,6 +525,11 @@ int compilaComando(FILE *arquivo) {
     }
 
     if (token.t == numero) {
+        // falta verificar se o numero tinha sido declarado com label
+
+        // logica para colocar o rotulo desse label
+        emitirMEPA("R%d: NADA", token.num);
+
         token = obterToken(arquivo);
         if (token.t != doispontos) {
             printf("Esperava-se dois pontos!\n");
@@ -536,7 +545,7 @@ int compilaComando(FILE *arquivo) {
     return 1;
 }
 
-int compilaBloco(FILE *arquivo) {
+int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
     unsigned int qtdVariaveis = 0;
     anaLexReturn token = obterToken(arquivo);
 
@@ -679,6 +688,11 @@ int compilaBloco(FILE *arquivo) {
     }
 
     token = obterToken(arquivo);
+
+    char temSubRotina = (token.t == procedimento || token.t == funcao);
+    int numRotulo = novoRotulo();
+    emitirMEPA("DSVS L%d", numRotulo); // desvia a execucao para depois dos codigos das subrotinas. o rotulo sera definido depois delas
+
     while (token.t == procedimento || token.t == funcao) {
 
         // usa int para evitar conlito com a variavel de tokens opsss
@@ -701,6 +715,8 @@ int compilaBloco(FILE *arquivo) {
             escopo++;
 
             compilaParametrosFormais(arquivo, nomeSubrotina);
+
+            emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo); // nome da func/proc eh o rotulo no MEPA, ENPR fala que eh inicio de um procedimento
         }
 
         if (tipoSubrotina == funcao) {
@@ -713,6 +729,8 @@ int compilaBloco(FILE *arquivo) {
 
             escopo++;
             compilaParametrosFormais(arquivo, nomeSubrotina);
+
+            emitirMEPA("%s: ENPR%d", nomeSubrotina, escopo); // nome da func/proc eh o rotulo no MEPA
 
             token = obterToken(arquivo);
             if (token.t != doispontos) {
@@ -742,7 +760,7 @@ int compilaBloco(FILE *arquivo) {
             exit(1);
         }
 
-        compilaBloco(arquivo);
+        compilaBloco(arquivo, 0);
 
         token = obterToken(arquivo);
         if (token.t != pontoevirgula) {
@@ -757,6 +775,9 @@ int compilaBloco(FILE *arquivo) {
         // le para possível processo ou funcao seguinte
         token = obterToken(arquivo);
     }
+
+    // agora que ja leu todas as subrotinas (saiu do while), coloca o rotulo do que deve ser executado de fato
+    emitirRotulo(numRotulo);
 
     // ja leu o token anteriormente
     if (token.t == inicio) {
@@ -783,6 +804,12 @@ int compilaBloco(FILE *arquivo) {
 
     if (qtdVariaveis > 0) {
         emitirMEPA("DMEM %u", qtdVariaveis);
+    }
+
+    if (!ehAChamadaInicial){
+        emitirMEPA("RTPR"); // sinaliza fim de procedimento/func
+        // na verdade, o mais completo eh colocar o RTPR k, n, em que k eh o escopo e n eh a quantidade de parametros da funcao
+        // mas ainda nao fiz a logica para guardar a quantidade de parametros dele para isso
     }
 
     return 1;
@@ -845,7 +872,7 @@ void compilaPrograma(FILE *arquivo) {
     // O bloco principal entra no escopo 1 da tabela, que corresponde ao nível 0 da MEPA.
     // Para acessar uma variável na MEPA, use o escopo da declaração menos 1.
     escopo++;
-    compilaBloco(arquivo); // compila o bloco principal do programa
+    compilaBloco(arquivo, 1); // compila o bloco principal do programa
     apagaEscopoTabelaSimbolos(escopo);
     escopo--;
 

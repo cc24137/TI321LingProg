@@ -12,5 +12,5 @@ int compilaExpressaoSimples(FILE *arquivo);
 int compilaExpressao(FILE *arquivo);
 int compilacomandoSemRotulo(FILE *arquivo);
 int compilaComando(FILE *arquivo);
-int compilaBloco(FILE *arquivo);
+int compilaBloco(FILE *arquivo, char ehAChamadaInicial);
 #endif

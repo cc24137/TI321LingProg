@@ -1,0 +1,7 @@
+compiladorAura/analisadorLexico.o
+compiladorAura/analisadorSintatico.o
+compiladorAura/descricaoParametros.o
+compiladorAura/geradorMEPA.o
+compiladorAura/main.o
+compiladorAura/tabelaSimbolos.o
+compiladorAura/tokens.o
