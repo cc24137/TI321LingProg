@@ -400,6 +400,8 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
 
+            emitirMEPA("CHPR %s, %d", nomeAlvoAtribuicao, escopo-1);
+
             return 1;
         }
 
@@ -440,6 +442,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                     printf("Esperava-se parâmetro(s) para a função ou procedimento %s\n", nomeAlvoAtribuicao);
                     exit(1);
                 }
+                emitirMEPA("CHPR %s, %d", nomeAlvoAtribuicao, escopo-1);
             }
             devolverToken(token);
         }
@@ -545,7 +548,7 @@ int compilaComando(FILE *arquivo) {
     return 1;
 }
 
-int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
+int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuProc) {
     unsigned int qtdVariaveis = 0;
     anaLexReturn token = obterToken(arquivo);
 
@@ -691,7 +694,10 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
 
     char temSubRotina = (token.t == procedimento || token.t == funcao);
     int numRotulo = novoRotulo();
-    emitirMEPA("DSVS L%d", numRotulo); // desvia a execucao para depois dos codigos das subrotinas. o rotulo sera definido depois delas
+
+    if (temSubRotina){
+        emitirMEPA("DSVS L%d", numRotulo); // desvia a execucao para depois dos codigos das subrotinas. o rotulo sera definido depois delas
+    }
 
     while (token.t == procedimento || token.t == funcao) {
 
@@ -716,7 +722,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
 
             compilaParametrosFormais(arquivo, nomeSubrotina);
 
-            emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo); // nome da func/proc eh o rotulo no MEPA, ENPR fala que eh inicio de um procedimento
+            emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo-1); // nome da func/proc eh o rotulo no MEPA, ENPR fala que eh inicio de um procedimento
         }
 
         if (tipoSubrotina == funcao) {
@@ -730,7 +736,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
             escopo++;
             compilaParametrosFormais(arquivo, nomeSubrotina);
 
-            emitirMEPA("%s: ENPR%d", nomeSubrotina, escopo); // nome da func/proc eh o rotulo no MEPA
+            emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo-1); // nome da func/proc eh o rotulo no MEPA
 
             token = obterToken(arquivo);
             if (token.t != doispontos) {
@@ -760,7 +766,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
             exit(1);
         }
 
-        compilaBloco(arquivo, 0);
+        compilaBloco(arquivo, 0, nomeSubrotina);
 
         token = obterToken(arquivo);
         if (token.t != pontoevirgula) {
@@ -776,8 +782,10 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
         token = obterToken(arquivo);
     }
 
-    // agora que ja leu todas as subrotinas (saiu do while), coloca o rotulo do que deve ser executado de fato
-    emitirRotulo(numRotulo);
+    if (temSubRotina){
+        // agora que ja leu todas as subrotinas (saiu do while), coloca o rotulo do que deve ser executado de fato
+        emitirRotulo(numRotulo);
+    }
 
     // ja leu o token anteriormente
     if (token.t == inicio) {
@@ -807,12 +815,29 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial) {
     }
 
     if (!ehAChamadaInicial){
-        emitirMEPA("RTPR"); // sinaliza fim de procedimento/func
-        // na verdade, o mais completo eh colocar o RTPR k, n, em que k eh o escopo e n eh a quantidade de parametros da funcao
-        // mas ainda nao fiz a logica para guardar a quantidade de parametros dele para isso
+        emitirMEPA("RTPR %d %d", escopo-1, qtsParametrosTem(nomeDestaFuncOuProc)); 
+        // sinaliza fim de procedimento/func
+        // RTPR k, n, em que k eh o escopo e n eh a quantidade de parametros da funcao
     }
 
     return 1;
+}
+
+void definirReadEWrite(){
+    int nRotulo = novoRotulo();
+    emitirMEPA("DSVS L%d", nRotulo); // pula a definicao do read e do write na execucao principal
+    // func read
+    emitirMEPA("read: ENPR 1");
+    emitirMEPA("LEIT");
+    emitirMEPA("ARMI 1, -4");
+    emitirMEPA("RTPR 1, 1");
+    // func write
+    emitirMEPA("write: ENPR 1");
+    emitirMEPA("CRVL 1, -4");
+    emitirMEPA("IMPR");
+    emitirMEPA("RTPR 1, 1");
+    
+    emitirRotulo(nRotulo); //
 }
 
 void compilaPrograma(FILE *arquivo) {
@@ -836,7 +861,7 @@ void compilaPrograma(FILE *arquivo) {
     adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
 
     inserereNovoParametro("read", "integer", 1, 0, 0);
-    inserereNovoParametro("write", "integer", 1, 0, 0);
+    inserereNovoParametro("write", "integer", 0, 0, 0);
 
 
     token = obterToken(arquivo);
@@ -872,7 +897,8 @@ void compilaPrograma(FILE *arquivo) {
     // O bloco principal entra no escopo 1 da tabela, que corresponde ao nível 0 da MEPA.
     // Para acessar uma variável na MEPA, use o escopo da declaração menos 1.
     escopo++;
-    compilaBloco(arquivo, 1); // compila o bloco principal do programa
+    definirReadEWrite();
+    compilaBloco(arquivo, 1, ""); // compila o bloco principal do programa
     apagaEscopoTabelaSimbolos(escopo);
     escopo--;
 

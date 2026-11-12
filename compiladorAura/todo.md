@@ -16,10 +16,3 @@ label 100, 100;  (declaracao de dois labels iguais)
 
 vai ter que criar uma natureza "label" na tabela de simbolos e guarda-los
 
-
-
-
-## outra coisa, mas agora do MEPA:
-No compilar parametros, a gente tem que devolver a quantidade de parametros para poder poder usar RTPR k, n
-Porque n eh a quantidade de parametros 
-

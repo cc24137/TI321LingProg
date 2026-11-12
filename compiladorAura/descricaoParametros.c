@@ -30,6 +30,18 @@ char verificaParametro(char* nomeFuncOuProc, char* tipo, int ordem, char ehRefer
     return 0;
 }
 
+char qtsParametrosTem(char* nomeFuncOuProc){
+
+    char qts = 0;
+
+    for (int i=0; i<topoParams; i++){
+        if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
+            qts++;
+        }
+    }
+    return qts;
+}
+
 char temParametro(char* nomeFuncOuProc){
     for (int i=0; i<topoParams; i++){
         if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
