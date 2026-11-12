@@ -474,13 +474,16 @@ int compilaComandoSemRotulo(FILE *arquivo) {
     }
 
     else if (token.t == se) {
-        compilaExpressao(arquivo);
+        int gerouCondicao = compilaExpressao(arquivo);
     
         // verifica se a condição do if é booleana
-        if (strcmp(tipo_expressao_atual, "boolean") != 0) {
+        if (!gerouCondicao || strcmp(tipo_expressao_atual, "boolean") != 0) {
             printf("Erro Semântico: A condição do IF deve ser booleana!\n");
             exit(1);
         }
+
+        int rotuloSenao = novoRotulo();
+        emitirMEPA("DSVF L%d", rotuloSenao);
     
         token = obterToken(arquivo);
         if (token.t != entao) {
@@ -492,15 +495,31 @@ int compilaComandoSemRotulo(FILE *arquivo) {
     
         token = obterToken(arquivo);
         if (token.t == senao) {
+            int rotuloFim = novoRotulo();
+            emitirMEPA("DSVS L%d", rotuloFim);
+            emitirRotulo(rotuloSenao);
             compilaComandoSemRotulo(arquivo);
+            emitirRotulo(rotuloFim);
         }
         else {
+            emitirRotulo(rotuloSenao);
             devolverToken(token);
         }
     }
 
     else if (token.t == enquanto) {
-        compilaExpressao(arquivo);
+        int rotuloTeste = novoRotulo();
+        int rotuloFim = novoRotulo();
+
+        emitirRotulo(rotuloTeste);
+        int gerouCondicao = compilaExpressao(arquivo);
+
+        if (!gerouCondicao || strcmp(tipo_expressao_atual, "boolean") != 0) {
+            printf("Erro Semântico: A condição do WHILE deve ser booleana!\n");
+            exit(1);
+        }
+
+        emitirMEPA("DSVF L%d", rotuloFim);
 
         token = obterToken(arquivo);
         if (token.t != faz) {
@@ -509,6 +528,8 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         }
 
         compilaComandoSemRotulo(arquivo);
+        emitirMEPA("DSVS L%d", rotuloTeste);
+        emitirRotulo(rotuloFim);
     }
 
     else {
