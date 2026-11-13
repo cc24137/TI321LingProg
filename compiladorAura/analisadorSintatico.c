@@ -134,9 +134,13 @@ int compilaFator(FILE *arquivo) {
         token = obterToken(arquivo);
 
         if ((nat == natureza_variavel ||
-             (nat == natureza_parametro && declaracao->tipoParametro == parametro_por_valor)) &&
+             (nat == natureza_parametro &&
+              (declaracao->tipoParametro == parametro_por_valor ||
+               declaracao->tipoParametro == parametro_por_referencia))) &&
             token.t != abrecolchetes && token.t != abreparenteses) {
-            emitirMEPA("CRVL %d, %d", declaracao->escopo - 1, declaracao->endereco);
+            const char *instrucao = nat == natureza_parametro &&
+                declaracao->tipoParametro == parametro_por_referencia ? "CRVI" : "CRVL";
+            emitirMEPA("%s %d, %d", instrucao, declaracao->escopo - 1, declaracao->endereco);
             gerouValor = 1;
         }
 
@@ -309,9 +313,15 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
         anaLexReturn token = obterToken(arquivo);
         if (token.t != identificador){
             printf("Esse parâmetro tem que ser identificador");
+            exit(1);
         }
-        
-        naturezas nat = obterNaturezaNaTabela(token.palavra);
+
+        const simbolo *declaracao = buscarNaTabelaSimbolos(token.palavra);
+        if (declaracao == NULL) {
+            printf("Erro Semântico: Identificador '%s' não foi declarado!\n", token.palavra);
+            exit(1);
+        }
+        naturezas nat = declaracao->natureza;
 
         if (dsp.tipoParametro == parametro_funcao && nat != natureza_funcao){
             printf("Esse parâmetro tem que ser função.");
@@ -324,20 +334,21 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
         }
 
         if (dsp.tipoParametro == parametro_por_referencia){
-            if (nat != natureza_parametro && nat != natureza_variavel){
+            int ehParametroDeDados = nat == natureza_parametro &&
+                (declaracao->tipoParametro == parametro_por_valor ||
+                 declaracao->tipoParametro == parametro_por_referencia);
+            if (nat != natureza_variavel && !ehParametroDeDados){
                 printf("Parâmetro por referência precisa receber variável.");
                 exit(1);
             }
-            char* tipo = obterTipoNaTabela(token.palavra);
-            if (strcmp(tipo, dsp.tipo) != 0){
+            if (strcmp(declaracao->tipo, dsp.tipo) != 0){
                 printf("O tipo da variável passada não corresponde ao tipo esperado.");
                 exit(1);
             }
-            const simbolo *declaracao = buscarNaTabelaSimbolos(token.palavra);
-            if (nat == natureza_variavel ||
-                (nat == natureza_parametro && declaracao->tipoParametro == parametro_por_valor)) {
-                emitirMEPA("CREN %d, %d", declaracao->escopo - 1, declaracao->endereco);
-            }
+            // Uma referência já guarda o endereço da variável original.
+            const char *instrucao = nat == natureza_parametro &&
+                declaracao->tipoParametro == parametro_por_referencia ? "CRVL" : "CREN";
+            emitirMEPA("%s %d, %d", instrucao, declaracao->escopo - 1, declaracao->endereco);
         }
     }
     else{ // nesse caso, o parâmetro é um valor (variável sem ser por referência)
@@ -427,9 +438,13 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
             if (gerouValor && (nat == natureza_variavel ||
-                (nat == natureza_parametro && declaracao->tipoParametro == parametro_por_valor)) &&
+                (nat == natureza_parametro &&
+                 (declaracao->tipoParametro == parametro_por_valor ||
+                  declaracao->tipoParametro == parametro_por_referencia))) &&
                 !abriuColchete) {
-                emitirMEPA("ARMZ %d, %d", declaracao->escopo - 1, declaracao->endereco);
+                const char *instrucao = nat == natureza_parametro &&
+                    declaracao->tipoParametro == parametro_por_referencia ? "ARMI" : "ARMZ";
+                emitirMEPA("%s %d, %d", instrucao, declaracao->escopo - 1, declaracao->endereco);
             }
         }
         else {
