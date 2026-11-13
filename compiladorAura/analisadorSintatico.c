@@ -32,12 +32,49 @@ static simbolo *buscarRotuloFonte(int numero) {
 
 void compilaParametroNaChamada(FILE *arquivo, const simbolo *subrotina, int posicao);
 
+static int ehRotinaEntradaSaida(const simbolo *subrotina) {
+    return subrotina->natureza == natureza_procedimento &&
+        subrotina->escopo == 0 &&
+        (strcmp(subrotina->nome, "read") == 0 ||
+         strcmp(subrotina->nome, "write") == 0);
+}
+
+static void compilaChamadaEntradaSaida(FILE *arquivo, const simbolo *subrotina,
+                                     anaLexReturn token) {
+    if (token.t != abreparenteses) {
+        printf("Esperava-se '(' com os argumentos de '%s'.\n", subrotina->nome);
+        exit(1);
+    }
+
+    token = obterToken(arquivo);
+    if (token.t == fechaparenteses) {
+        printf("'%s' precisa receber pelo menos um argumento.\n", subrotina->nome);
+        exit(1);
+    }
+    devolverToken(token);
+
+    do {
+        compilaParametroNaChamada(arquivo, subrotina, 0);
+        token = obterToken(arquivo);
+        if (token.t != virgula && token.t != fechaparenteses) {
+            printf("Esperava-se ',' ou ')' nos argumentos de '%s'.\n", subrotina->nome);
+            exit(1);
+        }
+        emitirMEPA("CHPR %s, %d", subrotina->rotuloMEPA, escopo - 1);
+    } while (token.t == virgula);
+}
+
 static void compilaChamada(FILE *arquivo, const simbolo *subrotina,
                           anaLexReturn token, int descartarResultado) {
     if (subrotina->natureza != natureza_funcao &&
         subrotina->natureza != natureza_procedimento) {
         printf("'%s' não é uma função ou procedimento.\n", subrotina->nome);
         exit(1);
+    }
+
+    if (ehRotinaEntradaSaida(subrotina)) {
+        compilaChamadaEntradaSaida(arquivo, subrotina, token);
+        return;
     }
 
     int ehFuncao = subrotina->natureza == natureza_funcao;
