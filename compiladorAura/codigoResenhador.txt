@@ -1,12 +1,84 @@
-program teste(input,output);
-var x: integer;
+program demonstracao(input,output);
+label 100, 900;
+var n, i, total, resultado: integer;
+
+(* Valor: recebe uma copia. Referencia: altera a variavel original. *)
+procedure acumular(valor: integer; var destino: integer);
+var dobro: integer;
+begin
+    dobro := valor * 2;
+    destino := destino + dobro;
+    valor := 99
+end;
+
+(* Repassa a referencia de total para outra rotina. *)
+procedure processar(var destino: integer);
+var passo: integer;
+
+    (* Rotina aninhada: acessa passo e destino do bloco externo. *)
+    procedure adicionar;
+    begin
+        acumular(passo, destino)
+    end;
 
 begin
-    x := 0;
-    while x < 3 do
+    passo := 3;
+    adicionar
+end;
+
+(* Atribuir ao nome da funcao grava seu resultado na pilha. *)
+function ajustar(valor: integer): integer;
+var parcial: integer;
+begin
+    parcial := (valor + 2) * 3;
+    ajustar := parcial div 2 - 1
+end;
+
+(* Salto para o bloco externo: gera DSVR, em vez de DSVS. *)
+procedure encerrar;
+begin
+    goto 900
+end;
+
+begin
+    (* Na maquina MEPA, digitar 3. O compilador apenas gera as instrucoes. *)
+    read(n);
+    total := 0;
+    i := 1;
+
+    (* Com n = 3: acumula 2 + 4 + 6 e termina com i = 4. *)
+    while i <= n do
     begin
-        if x = 1 then x := x + 2
-        else x := x + 1
+        acumular(i, total);
+        i := i + 1
     end;
-    write(x)
+
+    processar(total);
+    resultado := ajustar(total);
+
+    (* Testa operadores relacionais e logicos, com parenteses explicitos. *)
+    if (resultado > 0) and not (n = 0) then
+        write(resultado)
+    else
+        write(0);
+
+    if (n < 0) or (total <> 18) then
+        write(999)
+    else
+        write(total);
+
+    (* Com n = 3, o IF sem ELSE imprime 4: i nao foi alterado para 99. *)
+    if n >= 1 then write(i);
+    write(-n);
+
+    (* GOTO local pula a impressao de 777. *)
+    goto 100;
+    write(777);
+100: write(n);
+
+    (* Funcao usada como comando: seu resultado e descartado com DMEM 1. *)
+    ajustar(0);
+    encerrar;
+    write(888);
+900: write(900)
 end.
