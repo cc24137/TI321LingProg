@@ -4,6 +4,7 @@
 #define analisadorSintatico_h
 
 void compilaPrograma(FILE* arquivo);
+// Retorna a quantidade de parâmetros declarados.
 int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc);
 // Retornam 1 quando a expressão completa deixa um valor na pilha da MEPA.
 int compilaFator(FILE *arquivo);

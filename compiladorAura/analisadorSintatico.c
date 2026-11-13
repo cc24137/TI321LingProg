@@ -12,11 +12,74 @@
 char escopo = 0;
 char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
 
+typedef struct ContextoSubrotina {
+    const simbolo *declaracao;
+    struct ContextoSubrotina *anterior;
+} ContextoSubrotina;
+
+static ContextoSubrotina *contextoAtual = NULL;
+
+void compilaParametroNaChamada(FILE *arquivo, const simbolo *subrotina, int posicao);
+
+static void compilaChamada(FILE *arquivo, const simbolo *subrotina,
+                          anaLexReturn token, int descartarResultado) {
+    if (subrotina->natureza != natureza_funcao &&
+        subrotina->natureza != natureza_procedimento) {
+        printf("'%s' não é uma função ou procedimento.\n", subrotina->nome);
+        exit(1);
+    }
+
+    int ehFuncao = subrotina->natureza == natureza_funcao;
+    if (ehFuncao) {
+        emitirMEPA("AMEM 1");
+    }
+
+    int quantidadeArgumentos = 0;
+    if (token.t == abreparenteses) {
+        token = obterToken(arquivo);
+        if (token.t != fechaparenteses) {
+            devolverToken(token);
+            do {
+                if (quantidadeArgumentos >= subrotina->quantidadeParametros) {
+                    printf("Argumentos em excesso para '%s'.\n", subrotina->nome);
+                    exit(1);
+                }
+                compilaParametroNaChamada(arquivo, subrotina, quantidadeArgumentos);
+                quantidadeArgumentos++;
+                token = obterToken(arquivo);
+            } while (token.t == virgula);
+
+            if (token.t != fechaparenteses) {
+                printf("Esperava-se fechar os argumentos de '%s'.\n", subrotina->nome);
+                exit(1);
+            }
+        }
+    }
+    else {
+        devolverToken(token);
+    }
+
+    if (quantidadeArgumentos != subrotina->quantidadeParametros) {
+        printf("Quantidade de argumentos incorreta para '%s'.\n", subrotina->nome);
+        exit(1);
+    }
+    emitirMEPA("CHPR %s, %d", subrotina->nome, escopo - 1);
+    if (ehFuncao && descartarResultado) {
+        emitirMEPA("DMEM 1");
+    }
+}
 
 int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
+    simbolo *subrotina = buscarNaTabelaSimbolos(nomeFuncOuProc);
+    int quantidadeParametros = 0;
     anaLexReturn token = obterToken(arquivo);
     
     if (token.t == abreparenteses) {
+        token = obterToken(arquivo);
+        if (token.t == fechaparenteses) {
+            return 0;
+        }
+        devolverToken(token);
         do {
             tiposParametro tipoDoParametro = parametro_por_valor;
 
@@ -90,7 +153,11 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
                 simbolo *parametro = adicionaNaTabelaSimbolos(
                     paramsTemporarios[i], tipoParametro, escopo, natureza_parametro);
                 parametro->tipoParametro = tipoDoParametro;
-                inserereNovoParametro(nomeFuncOuProc, tipoParametro, tipoDoParametro);
+                int indice = inserereNovoParametro(nomeFuncOuProc, tipoParametro, tipoDoParametro);
+                if (quantidadeParametros == 0) {
+                    subrotina->inicioParametros = indice;
+                }
+                quantidadeParametros++;
                 free(paramsTemporarios[i]);
             }
 
@@ -106,7 +173,7 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
         devolverToken(token);
     }
 
-    return 1;
+    return quantidadeParametros;
 }
 
 int compilaFator(FILE *arquivo) {
@@ -133,6 +200,12 @@ int compilaFator(FILE *arquivo) {
 
         token = obterToken(arquivo);
 
+        if (nat == natureza_funcao) {
+            compilaChamada(arquivo, declaracao, token, 0);
+            strcpy(tipo_expressao_atual, tipoOriginalFator);
+            return 1;
+        }
+
         if ((nat == natureza_variavel ||
              (nat == natureza_parametro &&
               (declaracao->tipoParametro == parametro_por_valor ||
@@ -157,17 +230,9 @@ int compilaFator(FILE *arquivo) {
             token = obterToken(arquivo);
         }
 
-        while (token.t == abreparenteses) {
-            do {
-                compilaExpressao(arquivo);
-                token = obterToken(arquivo);
-            } while (token.t == virgula);
-
-            if (token.t != fechaparenteses) {
-                printf("Esperava-se fechaparenteses!\n");
-                exit(1);
-            }
-            token = obterToken(arquivo);
+        if (token.t == abreparenteses) {
+            printf("'%s' não é uma função.\n", declaracao->nome);
+            exit(1);
         }
 
         // restaura o tipo original ao final do fator
@@ -306,8 +371,8 @@ int compilaExpressao(FILE *arquivo) {
     return gerouValor;
 }
 
-void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao){
-    descricaoParametro dsp = obtemDescricao(nomeFuncOuProc, posicao);
+void compilaParametroNaChamada(FILE* arquivo, const simbolo *subrotina, int posicao){
+    descricaoParametro dsp = obtemDescricao(subrotina, posicao);
 
     if (dsp.tipoParametro != parametro_por_valor){
         anaLexReturn token = obterToken(arquivo);
@@ -352,7 +417,10 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
         }
     }
     else{ // nesse caso, o parâmetro é um valor (variável sem ser por referência)
-        compilaExpressao(arquivo);
+        if (!compilaExpressao(arquivo)) {
+            printf("O argumento precisa produzir um valor MEPA.\n");
+            exit(1);
+        }
         if (strcmp(tipo_expressao_atual, dsp.tipo) != 0){
             printf("A expressão não é compatível com o tipo de parâmetro esperado.");
             exit(1);
@@ -402,21 +470,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
         }
 
         if (token.t == abreparenteses) {
-            int posicao = 0;
-            do {
-                //compilaExpressao(arquivo);
-                compilaParametroNaChamada(arquivo, nomeAlvoAtribuicao, posicao);
-                token = obterToken(arquivo);
-                posicao++;
-            } while (token.t == virgula);
-
-            if (token.t != fechaparenteses) {
-                printf("Esperava-se fechaparenteses!\n");
-                exit(1);
-            }
-
-            emitirMEPA("CHPR %s, %d", nomeAlvoAtribuicao, escopo-1);
-
+            compilaChamada(arquivo, declaracao, token, 1);
             return 1;
         }
 
@@ -428,6 +482,18 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
 
+            if (nat == natureza_funcao) {
+                ContextoSubrotina *contexto = contextoAtual;
+                while (contexto != NULL && contexto->declaracao != declaracao) {
+                    contexto = contexto->anterior;
+                }
+                if (contexto == NULL) {
+                    printf("O resultado de '%s' só pode ser atribuído dentro da função.\n",
+                           declaracao->nome);
+                    exit(1);
+                }
+            }
+
             int gerouValor = compilaExpressao(arquivo);
 
             // verifica o tipo da atribuição
@@ -437,7 +503,11 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                         nomeAlvoAtribuicao, tipoVariavelDestino, tipo_expressao_atual);
                 exit(1);
             }
-            if (gerouValor && (nat == natureza_variavel ||
+            if (gerouValor && nat == natureza_funcao && !abriuColchete) {
+                // O escopo da declaração é o nível MEPA do corpo da função.
+                emitirMEPA("ARMZ %d, %d", declaracao->escopo, declaracao->endereco);
+            }
+            else if (gerouValor && (nat == natureza_variavel ||
                 (nat == natureza_parametro &&
                  (declaracao->tipoParametro == parametro_por_valor ||
                   declaracao->tipoParametro == parametro_por_referencia))) &&
@@ -453,19 +523,8 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
             else {
-                //printf("Entrou no else do identificador. Identificador: %s\n", nomeAlvoAtribuicao);
-                naturezas nat = declaracao->natureza;
-                if (nat != natureza_funcao && nat != natureza_procedimento) {
-                    printf("Só se pode chamar funções ou procedimentos. %s não é nem um nem outro.\n", nomeAlvoAtribuicao);
-                    exit(1);
-                }
-                if (temParametro(nomeAlvoAtribuicao)){
-                    printf("Esperava-se parâmetro(s) para a função ou procedimento %s\n", nomeAlvoAtribuicao);
-                    exit(1);
-                }
-                emitirMEPA("CHPR %s, %d", nomeAlvoAtribuicao, escopo-1);
+                compilaChamada(arquivo, declaracao, token, 1);
             }
-            devolverToken(token);
         }
     }
 
@@ -591,6 +650,8 @@ int compilaComando(FILE *arquivo) {
 }
 
 int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuProc) {
+    const simbolo *declaracaoDoBloco = ehAChamadaInicial ? NULL :
+        buscarNaTabelaSimbolos(nomeDestaFuncOuProc);
     unsigned int qtdVariaveis = 0;
     anaLexReturn token = obterToken(arquivo);
 
@@ -747,6 +808,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
         // guarda o tipo da sub-rotina para usar depois na hora de salvar a assinatura na tabela de simbolos
         int tipoSubrotina = token.t;
         char nomeSubrotina[100];
+        simbolo *subrotina;
 
         if (tipoSubrotina == procedimento) {
             token = obterToken(arquivo);
@@ -759,15 +821,16 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
 
             // adiciona a assinatura no escopo pai
             // entra no novo escopo
-            adicionaNaTabelaSimbolos(nomeSubrotina, "", escopo, natureza_procedimento);
+            subrotina = adicionaNaTabelaSimbolos(
+                nomeSubrotina, "", escopo, natureza_procedimento);
             escopo++;
 
-            compilaParametrosFormais(arquivo, nomeSubrotina);
+            subrotina->quantidadeParametros = compilaParametrosFormais(arquivo, nomeSubrotina);
 
             emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo-1); // nome da func/proc eh o rotulo no MEPA, ENPR fala que eh inicio de um procedimento
         }
 
-        if (tipoSubrotina == funcao) {
+        else {
             token = obterToken(arquivo);
             if (token.t != identificador) {
                 printf("Esperava-se um identificador!\n");
@@ -775,8 +838,11 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
             }
             strcpy(nomeSubrotina, token.palavra);
 
+            subrotina = adicionaNaTabelaSimbolos(
+                nomeSubrotina, "", escopo, natureza_funcao);
             escopo++;
-            compilaParametrosFormais(arquivo, nomeSubrotina);
+            subrotina->quantidadeParametros = compilaParametrosFormais(arquivo, nomeSubrotina);
+            subrotina->endereco = -(subrotina->quantidadeParametros + 4);
 
             emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo-1); // nome da func/proc eh o rotulo no MEPA
 
@@ -798,8 +864,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
             } else {
                 strcpy(tipoDaFuncao, palavras[token.t]);
             }
-            // escopo -1 por usar o escopo da funcao para salvar a assinatura dela na tabela de simbolos, e não o escopo do pai
-            adicionaNaTabelaSimbolos(nomeSubrotina, tipoDaFuncao, escopo - 1, natureza_funcao);
+            strcpy(subrotina->tipo, tipoDaFuncao);
         }
 
         token = obterToken(arquivo);
@@ -808,7 +873,10 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
             exit(1);
         }
 
+        ContextoSubrotina contexto = {subrotina, contextoAtual};
+        contextoAtual = &contexto;
         compilaBloco(arquivo, 0, nomeSubrotina);
+        contextoAtual = contexto.anterior;
 
         token = obterToken(arquivo);
         if (token.t != pontoevirgula) {
@@ -857,7 +925,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
     }
 
     if (!ehAChamadaInicial){
-        emitirMEPA("RTPR %d %d", escopo-1, qtsParametrosTem(nomeDestaFuncOuProc)); 
+        emitirMEPA("RTPR %d, %d", escopo-1, declaracaoDoBloco->quantidadeParametros);
         // sinaliza fim de procedimento/func
         // RTPR k, n, em que k eh o escopo e n eh a quantidade de parametros da funcao
     }
@@ -899,11 +967,14 @@ void compilaPrograma(FILE *arquivo) {
     // nome do programa
     adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_nomePrograma);
     // funcoes nativas
-    adicionaNaTabelaSimbolos("read", "", escopo, natureza_procedimento);
-    adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
-
-    inserereNovoParametro("read", "integer", parametro_por_referencia);
-    inserereNovoParametro("write", "integer", parametro_por_valor);
+    simbolo *rotinaRead = adicionaNaTabelaSimbolos("read", "", escopo, natureza_procedimento);
+    rotinaRead->inicioParametros = inserereNovoParametro(
+        "read", "integer", parametro_por_referencia);
+    rotinaRead->quantidadeParametros = 1;
+    simbolo *rotinaWrite = adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
+    rotinaWrite->inicioParametros = inserereNovoParametro(
+        "write", "integer", parametro_por_valor);
+    rotinaWrite->quantidadeParametros = 1;
 
 
     token = obterToken(arquivo);

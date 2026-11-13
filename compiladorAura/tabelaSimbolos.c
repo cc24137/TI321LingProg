@@ -38,6 +38,8 @@ simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas
     novo->natureza = natureza;
     novo->endereco = 0;
     novo->tipoParametro = parametro_por_valor;
+    novo->inicioParametros = -1;
+    novo->quantidadeParametros = 0;
     topo++;
     return novo;
 }

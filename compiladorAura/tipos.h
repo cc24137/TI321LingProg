@@ -106,6 +106,8 @@ typedef struct {
     int endereco;
     char escopo;
     tiposParametro tipoParametro; // Usado quando a natureza é natureza_parametro.
+    int inicioParametros;
+    int quantidadeParametros;
 } simbolo;
 
 typedef struct {

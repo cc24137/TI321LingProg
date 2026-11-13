@@ -50,28 +50,17 @@ char temParametro(char* nomeFuncOuProc){
     return 0;
 }
 
-descricaoParametro obtemDescricao(char* nomeFuncOuProc, int ordem){
-    //printf("Descrição do parâmetro %d da func/proc %s \n", ordem, nomeFuncOuProc);
-    for (int i=0; i<topoParams; i++){
-
-        if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
-            //printf("%d\n", i);
-            i += ordem;
-            if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
-                //printf("%d\n", i);
-                return descParametros[i];
-            }
-            else{
-                printf("Esse função ou procedimento %s não tem tantos parâmetros;\n", nomeFuncOuProc);
-                exit(1);
-            }
-        }
+descricaoParametro obtemDescricao(const simbolo *subrotina, int ordem){
+    if (ordem < 0 || ordem >= subrotina->quantidadeParametros ||
+        subrotina->inicioParametros < 0 ||
+        subrotina->inicioParametros + ordem >= topoParams) {
+        printf("Argumento fora da assinatura de '%s'.\n", subrotina->nome);
+        exit(1);
     }
-    printf("Esse nome de função/proc não existe\n");
-    exit(1);
+    return descParametros[subrotina->inicioParametros + ordem];
 }
 
-void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, tiposParametro tipoParametro){
+int inserereNovoParametro(char* nomeFuncOuProc, char* tipo, tiposParametro tipoParametro){
     //printf("Insere parâmetro chamado. \n");
     if (topoParams == MAX_PARAMETROS){
         printf("Estourou o limite de parâmetros.\n");
@@ -87,7 +76,7 @@ void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, tiposParametro tipo
     strcpy(descParametros[topoParams].tipo, tipo);
     descParametros[topoParams].tipoParametro = tipoParametro;
 
-    topoParams++;
+    return topoParams++;
 } 
 
 void printaAi(){
