@@ -92,20 +92,26 @@ typedef enum {
     natureza_tipo
 } naturezas;
 
+typedef enum {
+    parametro_por_valor,
+    parametro_por_referencia,
+    parametro_funcao,
+    parametro_procedimento
+} tiposParametro;
+
 typedef struct {
     char nome[100];
     char tipo[100];
     naturezas natureza;
-    unsigned int endereco;
+    int endereco;
     char escopo;
+    tiposParametro tipoParametro; // Usado quando a natureza é natureza_parametro.
 } simbolo;
 
 typedef struct {
     char tipo[100];
-    char ehRef;
     char nomeFuncOuProc[100]; // o nome do proc/func desse parâmetro
-    char ehFunc;
-    char ehProc;
+    tiposParametro tipoParametro;
 } descricaoParametro;
 
 #endif

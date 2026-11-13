@@ -37,8 +37,20 @@ simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas
     novo->escopo = escopo;
     novo->natureza = natureza;
     novo->endereco = 0;
+    novo->tipoParametro = parametro_por_valor;
     topo++;
     return novo;
+}
+
+void atribuirEnderecosParametros(char escopo) {
+    // A lista acaba de ser inserida. O último parâmetro fica antes dos três
+    // campos de controle da chamada, no deslocamento -4.
+    int deslocamento = -4;
+    for (int i = topo - 1; i >= 0 && tabela_simbolos[i].escopo == escopo; i--) {
+        if (tabela_simbolos[i].natureza == natureza_parametro) {
+            tabela_simbolos[i].endereco = deslocamento--;
+        }
+    }
 }
 
 void apagaEscopoTabelaSimbolos(char escopo) {

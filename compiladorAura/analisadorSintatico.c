@@ -15,27 +15,21 @@ char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
 
 int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
     anaLexReturn token = obterToken(arquivo);
-    descricaoParametro descParam;
-    strcpy(descParam.nomeFuncOuProc, nomeFuncOuProc);
     
     if (token.t == abreparenteses) {
         do {
-            descParam.ehFunc = 0;
-            descParam.ehProc = 0;
-            descParam.ehRef = 0;
+            tiposParametro tipoDoParametro = parametro_por_valor;
 
             token = obterToken(arquivo);
-            int ehProcedure = 0;
 
             if (token.t == funcao) {
-                descParam.ehFunc = 1;
+                tipoDoParametro = parametro_funcao;
                 token = obterToken(arquivo);
             } else if (token.t == procedimento) {
-                descParam.ehProc = 1;
-                ehProcedure = 1;
+                tipoDoParametro = parametro_procedimento;
                 token = obterToken(arquivo);
             } else if (token.t == variavel) {
-                descParam.ehRef = 1;
+                tipoDoParametro = parametro_por_referencia;
                 token = obterToken(arquivo);
             }
 
@@ -69,7 +63,7 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
             // guardar o tipo dos parametros -> tem que ser vazio para procedure
             char tipoParametro[100] = "";
 
-            if (!ehProcedure) {
+            if (tipoDoParametro != parametro_procedimento) {
                 if (token.t != doispontos) {
                     printf("Esperava-se dois pontos na declaração dos parâmetros!\n");
                     exit(1);
@@ -93,8 +87,10 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
 
             // salva todos os parametros na tabela no escopo atual
             for (int i = 0; i < idxParams; i++) {
-                adicionaNaTabelaSimbolos(paramsTemporarios[i], tipoParametro, escopo, natureza_parametro);
-                inserereNovoParametro(descParam.nomeFuncOuProc, tipoParametro, descParam.ehRef, descParam.ehProc, descParam.ehFunc);
+                simbolo *parametro = adicionaNaTabelaSimbolos(
+                    paramsTemporarios[i], tipoParametro, escopo, natureza_parametro);
+                parametro->tipoParametro = tipoDoParametro;
+                inserereNovoParametro(nomeFuncOuProc, tipoParametro, tipoDoParametro);
                 free(paramsTemporarios[i]);
             }
 
@@ -104,6 +100,7 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
             printf("Esperava-se ')' para fechar os parâmetros formais!\n");
             exit(1);
         }
+        atribuirEnderecosParametros(escopo);
     }
     else {
         devolverToken(token);
@@ -136,8 +133,10 @@ int compilaFator(FILE *arquivo) {
 
         token = obterToken(arquivo);
 
-        if (nat == natureza_variavel && token.t != abrecolchetes && token.t != abreparenteses) {
-            emitirMEPA("CRVL %d, %u", declaracao->escopo - 1, declaracao->endereco);
+        if ((nat == natureza_variavel ||
+             (nat == natureza_parametro && declaracao->tipoParametro == parametro_por_valor)) &&
+            token.t != abrecolchetes && token.t != abreparenteses) {
+            emitirMEPA("CRVL %d, %d", declaracao->escopo - 1, declaracao->endereco);
             gerouValor = 1;
         }
 
@@ -306,7 +305,7 @@ int compilaExpressao(FILE *arquivo) {
 void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao){
     descricaoParametro dsp = obtemDescricao(nomeFuncOuProc, posicao);
 
-    if (dsp.ehFunc || dsp.ehProc || dsp.ehRef){
+    if (dsp.tipoParametro != parametro_por_valor){
         anaLexReturn token = obterToken(arquivo);
         if (token.t != identificador){
             printf("Esse parâmetro tem que ser identificador");
@@ -314,17 +313,17 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
         
         naturezas nat = obterNaturezaNaTabela(token.palavra);
 
-        if (dsp.ehFunc && nat != natureza_funcao){
+        if (dsp.tipoParametro == parametro_funcao && nat != natureza_funcao){
             printf("Esse parâmetro tem que ser função.");
             exit(1);
         }
 
-        if (dsp.ehProc && nat != natureza_procedimento){
+        if (dsp.tipoParametro == parametro_procedimento && nat != natureza_procedimento){
             printf("Esse parâmetro tem que ser procedimento.");
             exit(1);
         }
 
-        if (dsp.ehRef){
+        if (dsp.tipoParametro == parametro_por_referencia){
             if (nat != natureza_parametro && nat != natureza_variavel){
                 printf("Parâmetro por referência precisa receber variável.");
                 exit(1);
@@ -333,6 +332,11 @@ void compilaParametroNaChamada(FILE* arquivo, char* nomeFuncOuProc, int posicao)
             if (strcmp(tipo, dsp.tipo) != 0){
                 printf("O tipo da variável passada não corresponde ao tipo esperado.");
                 exit(1);
+            }
+            const simbolo *declaracao = buscarNaTabelaSimbolos(token.palavra);
+            if (nat == natureza_variavel ||
+                (nat == natureza_parametro && declaracao->tipoParametro == parametro_por_valor)) {
+                emitirMEPA("CREN %d, %d", declaracao->escopo - 1, declaracao->endereco);
             }
         }
     }
@@ -422,8 +426,10 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                         nomeAlvoAtribuicao, tipoVariavelDestino, tipo_expressao_atual);
                 exit(1);
             }
-            if (gerouValor && nat == natureza_variavel && !abriuColchete) {
-                emitirMEPA("ARMZ %d, %u", declaracao->escopo - 1, declaracao->endereco);
+            if (gerouValor && (nat == natureza_variavel ||
+                (nat == natureza_parametro && declaracao->tipoParametro == parametro_por_valor)) &&
+                !abriuColchete) {
+                emitirMEPA("ARMZ %d, %d", declaracao->escopo - 1, declaracao->endereco);
             }
         }
         else {
@@ -881,8 +887,8 @@ void compilaPrograma(FILE *arquivo) {
     adicionaNaTabelaSimbolos("read", "", escopo, natureza_procedimento);
     adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
 
-    inserereNovoParametro("read", "integer", 1, 0, 0);
-    inserereNovoParametro("write", "integer", 0, 0, 0);
+    inserereNovoParametro("read", "integer", parametro_por_referencia);
+    inserereNovoParametro("write", "integer", parametro_por_valor);
 
 
     token = obterToken(arquivo);

@@ -1,18 +1,12 @@
-program exemplo12(input,output);
-
-    var x: integer;
-
-    procedure r;
-
-        procedure q;
-            var y: integer;
-        begin
-            read(y); write(y)
-        end (* q *);
-
-    begin q end (* r *);
+program teste(input,output);
+var x: integer;
 
 begin
-    read(x);
-    r
+    x := 0;
+    while x < 3 do
+    begin
+        if x = 1 then x := x + 2
+        else x := x + 1
+    end;
+    write(x)
 end.

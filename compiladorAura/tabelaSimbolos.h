@@ -6,6 +6,7 @@
 char temNaTabelaSimbolos(char *nome);
 simbolo *buscarNaTabelaSimbolos(const char *nome);
 simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas natureza);
+void atribuirEnderecosParametros(char escopo);
 void apagaEscopoTabelaSimbolos(char contexto);
 void printaTabela();
 naturezas obterNaturezaNaTabela(char *nome);

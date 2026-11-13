@@ -1,6 +1,7 @@
 #include "tipos.h"
 #include "tokens.h"
 #include "analisadorLexico.h"
+#include "descricaoParametros.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
 descricaoParametro descParametros[MAX_PARAMETROS];
 int topoParams = 0;
 
-char verificaParametro(char* nomeFuncOuProc, char* tipo, int ordem, char ehReferencia, char ehProcedure, char ehFuncao){
+char verificaParametro(char* nomeFuncOuProc, char* tipo, int ordem, tiposParametro tipoParametro){
 
     for (int i=0; i<topoParams; i++){
         if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0){
@@ -18,9 +19,7 @@ char verificaParametro(char* nomeFuncOuProc, char* tipo, int ordem, char ehRefer
         }
         if (strcmp(descParametros[i].nomeFuncOuProc, nomeFuncOuProc) == 0 &&
             strcmp(descParametros[i].tipo, tipo) == 0 &&
-            descParametros[i].ehRef == ehReferencia &&
-            ehProcedure == descParametros[i].ehProc &&
-            ehFuncao == descParametros[i].ehFunc){
+            descParametros[i].tipoParametro == tipoParametro){
                 return 1;
         }
         else{
@@ -72,23 +71,21 @@ descricaoParametro obtemDescricao(char* nomeFuncOuProc, int ordem){
     exit(1);
 }
 
-void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, char ehReferencia, char ehProcedure, char ehFuncao){
+void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, tiposParametro tipoParametro){
     //printf("Insere parâmetro chamado. \n");
     if (topoParams == MAX_PARAMETROS){
         printf("Estourou o limite de parâmetros.\n");
         exit(1);  
     } 
 
-    if (ehProcedure && ehFuncao){
-        printf("Não pode ser função e procedimento ao mesmo tempo.\n");
+    if (tipoParametro < parametro_por_valor || tipoParametro > parametro_procedimento){
+        printf("Categoria de parâmetro inválida.\n");
         exit(1);
     }
 
     strcpy(descParametros[topoParams].nomeFuncOuProc, nomeFuncOuProc);
     strcpy(descParametros[topoParams].tipo, tipo);
-    descParametros[topoParams].ehRef = ehReferencia;
-    descParametros[topoParams].ehProc = ehProcedure;
-    descParametros[topoParams].ehFunc = ehFuncao;
+    descParametros[topoParams].tipoParametro = tipoParametro;
 
     topoParams++;
 } 
@@ -96,7 +93,7 @@ void inserereNovoParametro(char* nomeFuncOuProc, char* tipo, char ehReferencia, 
 void printaAi(){
     printf("Descrição dos parâmetros: \n");
     for (int i=0; i<topoParams; i++){
-        printf("nomeFunc/Proc: %s; tipo: %s; ehRef, ehFunc, ehProc: %d, %d, %d \n ", descParametros[i].nomeFuncOuProc, 
-        descParametros[i].tipo, descParametros[i].ehRef, descParametros[i].ehFunc, descParametros[i].ehProc);
+        printf("nomeFunc/Proc: %s; tipo: %s; categoria: %d\n", descParametros[i].nomeFuncOuProc,
+        descParametros[i].tipo, descParametros[i].tipoParametro);
     }
 }
