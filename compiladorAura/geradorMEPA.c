@@ -67,7 +67,7 @@ int novoRotulo(void) {
 
 // Escreve um rótulo no arquivo
 void emitirRotulo(int rotulo) {
-    emitirMEPA("L%d NADA", rotulo);
+    emitirMEPA("L%d: NADA", rotulo);
 }
 
 // Fecha o arquivo de saída

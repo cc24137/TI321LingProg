@@ -12,12 +12,23 @@
 char escopo = 0;
 char tipo_expressao_atual[100] = ""; // var para checkagem de tipos
 
-typedef struct ContextoSubrotina {
-    const simbolo *declaracao;
-    struct ContextoSubrotina *anterior;
-} ContextoSubrotina;
+static simbolo *declararSubrotina(char *nome, naturezas natureza) {
+    simbolo *subrotina = adicionaNaTabelaSimbolos(nome, "", escopo, natureza);
+    snprintf(subrotina->rotuloMEPA, sizeof subrotina->rotuloMEPA,
+             "L%d_%s", novoRotulo(), nome);
+    return subrotina;
+}
 
-static ContextoSubrotina *contextoAtual = NULL;
+static simbolo *buscarRotuloFonte(int numero) {
+    char nome[32];
+    snprintf(nome, sizeof nome, "%d", numero);
+    simbolo *rotulo = buscarNaTabelaSimbolos(nome);
+    if (rotulo == NULL || rotulo->natureza != natureza_rotulo) {
+        printf("Rótulo %d não declarado em um bloco visível.\n", numero);
+        exit(1);
+    }
+    return rotulo;
+}
 
 void compilaParametroNaChamada(FILE *arquivo, const simbolo *subrotina, int posicao);
 
@@ -63,7 +74,7 @@ static void compilaChamada(FILE *arquivo, const simbolo *subrotina,
         printf("Quantidade de argumentos incorreta para '%s'.\n", subrotina->nome);
         exit(1);
     }
-    emitirMEPA("CHPR %s, %d", subrotina->nome, escopo - 1);
+    emitirMEPA("CHPR %s, %d", subrotina->rotuloMEPA, escopo - 1);
     if (ehFuncao && descartarResultado) {
         emitirMEPA("DMEM 1");
     }
@@ -85,13 +96,11 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
 
             token = obterToken(arquivo);
 
-            if (token.t == funcao) {
-                tipoDoParametro = parametro_funcao;
-                token = obterToken(arquivo);
-            } else if (token.t == procedimento) {
-                tipoDoParametro = parametro_procedimento;
-                token = obterToken(arquivo);
-            } else if (token.t == variavel) {
+            if (token.t == funcao || token.t == procedimento) {
+                printf("Parâmetros que recebem sub-rotinas ainda não são suportados na convenção MEPA atual.\n");
+                exit(1);
+            }
+            if (token.t == variavel) {
                 tipoDoParametro = parametro_por_referencia;
                 token = obterToken(arquivo);
             }
@@ -123,30 +132,24 @@ int compilaParametrosFormais(FILE *arquivo, char* nomeFuncOuProc) {
                 token = obterToken(arquivo);
             }
 
-            // guardar o tipo dos parametros -> tem que ser vazio para procedure
             char tipoParametro[100] = "";
 
-            if (tipoDoParametro != parametro_procedimento) {
-                if (token.t != doispontos) {
-                    printf("Esperava-se dois pontos na declaração dos parâmetros!\n");
-                    exit(1);
-                }
-
-                token = obterToken(arquivo);
-                if (token.t != identificador && (token.t < 11 || token.t > 16)) {
-                    printf("Esperava-se um identificador de tipo após os dois pontos!\n");
-                    exit(1);
-                }
-
-                // copia o nome do tipo que leu
-                if (token.t == identificador) {
-                    strcpy(tipoParametro, token.palavra);
-                } else {
-                    strcpy(tipoParametro, palavras[token.t]);
-                }
-
-                token = obterToken(arquivo);
+            if (token.t != doispontos) {
+                printf("Esperava-se dois pontos na declaração dos parâmetros!\n");
+                exit(1);
             }
+
+            token = obterToken(arquivo);
+            if (token.t != identificador && (token.t < 11 || token.t > 16)) {
+                printf("Esperava-se um identificador de tipo após os dois pontos!\n");
+                exit(1);
+            }
+            if (token.t == identificador) {
+                strcpy(tipoParametro, token.palavra);
+            } else {
+                strcpy(tipoParametro, palavras[token.t]);
+            }
+            token = obterToken(arquivo);
 
             // salva todos os parametros na tabela no escopo atual
             for (int i = 0; i < idxParams; i++) {
@@ -482,18 +485,6 @@ int compilaComandoSemRotulo(FILE *arquivo) {
                 exit(1);
             }
 
-            if (nat == natureza_funcao) {
-                ContextoSubrotina *contexto = contextoAtual;
-                while (contexto != NULL && contexto->declaracao != declaracao) {
-                    contexto = contexto->anterior;
-                }
-                if (contexto == NULL) {
-                    printf("O resultado de '%s' só pode ser atribuído dentro da função.\n",
-                           declaracao->nome);
-                    exit(1);
-                }
-            }
-
             int gerouValor = compilaExpressao(arquivo);
 
             // verifica o tipo da atribuição
@@ -534,8 +525,15 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             printf("Esperava-se um número!\n");
             exit(1);
         }
-        // falta verificar se o numero em questao ja foi compilado
-        emitirMEPA("DSVS R%d", token.num); // desvio incondicional
+        simbolo *rotulo = buscarRotuloFonte(token.num);
+        int nivelDestino = rotulo->escopo - 1;
+        int nivelOrigem = escopo - 1;
+        if (nivelDestino == nivelOrigem) {
+            emitirMEPA("DSVS %s", rotulo->rotuloMEPA);
+        }
+        else {
+            emitirMEPA("DSVR %s, %d, %d", rotulo->rotuloMEPA, nivelDestino, nivelOrigem);
+        }
 
     }
 
@@ -571,14 +569,14 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             exit(1);
         }
     
-        compilaComandoSemRotulo(arquivo);
+        compilaComando(arquivo);
     
         token = obterToken(arquivo);
         if (token.t == senao) {
             int rotuloFim = novoRotulo();
             emitirMEPA("DSVS L%d", rotuloFim);
             emitirRotulo(rotuloSenao);
-            compilaComandoSemRotulo(arquivo);
+            compilaComando(arquivo);
             emitirRotulo(rotuloFim);
         }
         else {
@@ -607,7 +605,7 @@ int compilaComandoSemRotulo(FILE *arquivo) {
             exit(1);
         }
 
-        compilaComandoSemRotulo(arquivo);
+        compilaComando(arquivo);
         emitirMEPA("DSVS L%d", rotuloTeste);
         emitirRotulo(rotuloFim);
     }
@@ -629,16 +627,18 @@ int compilaComando(FILE *arquivo) {
     }
 
     if (token.t == numero) {
-        // falta verificar se o numero tinha sido declarado com label
-
-        // logica para colocar o rotulo desse label
-        emitirMEPA("R%d: NADA", token.num);
-
+        simbolo *rotulo = buscarRotuloFonte(token.num);
+        if (rotulo->escopo != escopo) {
+            printf("Rótulo %d definido fora do bloco de declaração.\n", token.num);
+            exit(1);
+        }
         token = obterToken(arquivo);
         if (token.t != doispontos) {
             printf("Esperava-se dois pontos!\n");
             exit(1);
         }
+        emitirMEPA("%s: ENRT %d, %d", rotulo->rotuloMEPA,
+                   rotulo->escopo - 1, rotulo->quantidadeLocais);
     }
     else {
         devolverToken(token);
@@ -663,6 +663,12 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
                 exit(1);
             }
 
+            char nomeRotulo[32];
+            snprintf(nomeRotulo, sizeof nomeRotulo, "%d", token.num);
+            simbolo *rotuloFonte = adicionaNaTabelaSimbolos(
+                nomeRotulo, "", escopo, natureza_rotulo);
+            snprintf(rotuloFonte->rotuloMEPA, sizeof rotuloFonte->rotuloMEPA,
+                     "R%d_%d", token.num, novoRotulo());
             token = obterToken(arquivo);
             if (token.t != virgula && token.t != pontoevirgula) {
                 printf("Esperava-se uma vírgula ou um ponto e vírgula!\n");
@@ -792,6 +798,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
     if (qtdVariaveis > 0) {
         emitirMEPA("AMEM %u", qtdVariaveis);
     }
+    prepararRotulosDoBloco(escopo, qtdVariaveis);
 
     token = obterToken(arquivo);
 
@@ -803,48 +810,21 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
     }
 
     while (token.t == procedimento || token.t == funcao) {
-
-        // usa int para evitar conlito com a variavel de tokens opsss
-        // guarda o tipo da sub-rotina para usar depois na hora de salvar a assinatura na tabela de simbolos
         int tipoSubrotina = token.t;
         char nomeSubrotina[100];
-        simbolo *subrotina;
-
-        if (tipoSubrotina == procedimento) {
-            token = obterToken(arquivo);
-            if (token.t != identificador) {
-                printf("Esperava-se um identificador!\n");
-                exit(1);
-            }
-            // salva o nome
-            strcpy(nomeSubrotina, token.palavra);
-
-            // adiciona a assinatura no escopo pai
-            // entra no novo escopo
-            subrotina = adicionaNaTabelaSimbolos(
-                nomeSubrotina, "", escopo, natureza_procedimento);
-            escopo++;
-
-            subrotina->quantidadeParametros = compilaParametrosFormais(arquivo, nomeSubrotina);
-
-            emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo-1); // nome da func/proc eh o rotulo no MEPA, ENPR fala que eh inicio de um procedimento
+        token = obterToken(arquivo);
+        if (token.t != identificador) {
+            printf("Esperava-se um identificador para a sub-rotina!\n");
+            exit(1);
         }
+        strcpy(nomeSubrotina, token.palavra);
+        simbolo *subrotina = declararSubrotina(nomeSubrotina,
+            tipoSubrotina == funcao ? natureza_funcao : natureza_procedimento);
+        escopo++;
+        subrotina->quantidadeParametros = compilaParametrosFormais(arquivo, nomeSubrotina);
 
-        else {
-            token = obterToken(arquivo);
-            if (token.t != identificador) {
-                printf("Esperava-se um identificador!\n");
-                exit(1);
-            }
-            strcpy(nomeSubrotina, token.palavra);
-
-            subrotina = adicionaNaTabelaSimbolos(
-                nomeSubrotina, "", escopo, natureza_funcao);
-            escopo++;
-            subrotina->quantidadeParametros = compilaParametrosFormais(arquivo, nomeSubrotina);
+        if (tipoSubrotina == funcao) {
             subrotina->endereco = -(subrotina->quantidadeParametros + 4);
-
-            emitirMEPA("%s: ENPR %d", nomeSubrotina, escopo-1); // nome da func/proc eh o rotulo no MEPA
 
             token = obterToken(arquivo);
             if (token.t != doispontos) {
@@ -866,6 +846,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
             }
             strcpy(subrotina->tipo, tipoDaFuncao);
         }
+        emitirMEPA("%s: ENPR %d", subrotina->rotuloMEPA, escopo - 1);
 
         token = obterToken(arquivo);
         if (token.t != pontoevirgula) {
@@ -873,10 +854,7 @@ int compilaBloco(FILE *arquivo, char ehAChamadaInicial, char* nomeDestaFuncOuPro
             exit(1);
         }
 
-        ContextoSubrotina contexto = {subrotina, contextoAtual};
-        contextoAtual = &contexto;
         compilaBloco(arquivo, 0, nomeSubrotina);
-        contextoAtual = contexto.anterior;
 
         token = obterToken(arquivo);
         if (token.t != pontoevirgula) {
@@ -937,12 +915,12 @@ void definirReadEWrite(){
     int nRotulo = novoRotulo();
     emitirMEPA("DSVS L%d", nRotulo); // pula a definicao do read e do write na execucao principal
     // func read
-    emitirMEPA("read: ENPR 1");
+    emitirMEPA("%s: ENPR 1", buscarNaTabelaSimbolos("read")->rotuloMEPA);
     emitirMEPA("LEIT");
     emitirMEPA("ARMI 1, -4");
     emitirMEPA("RTPR 1, 1");
     // func write
-    emitirMEPA("write: ENPR 1");
+    emitirMEPA("%s: ENPR 1", buscarNaTabelaSimbolos("write")->rotuloMEPA);
     emitirMEPA("CRVL 1, -4");
     emitirMEPA("IMPR");
     emitirMEPA("RTPR 1, 1");
@@ -967,11 +945,11 @@ void compilaPrograma(FILE *arquivo) {
     // nome do programa
     adicionaNaTabelaSimbolos(token.palavra, "", escopo, natureza_nomePrograma);
     // funcoes nativas
-    simbolo *rotinaRead = adicionaNaTabelaSimbolos("read", "", escopo, natureza_procedimento);
+    simbolo *rotinaRead = declararSubrotina("read", natureza_procedimento);
     rotinaRead->inicioParametros = inserereNovoParametro(
         "read", "integer", parametro_por_referencia);
     rotinaRead->quantidadeParametros = 1;
-    simbolo *rotinaWrite = adicionaNaTabelaSimbolos("write", "", escopo, natureza_procedimento);
+    simbolo *rotinaWrite = declararSubrotina("write", natureza_procedimento);
     rotinaWrite->inicioParametros = inserereNovoParametro(
         "write", "integer", parametro_por_valor);
     rotinaWrite->quantidadeParametros = 1;

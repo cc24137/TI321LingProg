@@ -89,7 +89,8 @@ typedef enum {
     natureza_parametro,
     natureza_variavel,
     natureza_nomePrograma,
-    natureza_tipo
+    natureza_tipo,
+    natureza_rotulo
 } naturezas;
 
 typedef enum {
@@ -108,6 +109,8 @@ typedef struct {
     tiposParametro tipoParametro; // Usado quando a natureza é natureza_parametro.
     int inicioParametros;
     int quantidadeParametros;
+    char rotuloMEPA[128];
+    int quantidadeLocais;
 } simbolo;
 
 typedef struct {

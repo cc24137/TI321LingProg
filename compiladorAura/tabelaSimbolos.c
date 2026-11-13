@@ -29,9 +29,9 @@ simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas
         exit(1);
     }
 
-
     // insere direto no topo
     simbolo *novo = &tabela_simbolos[topo];
+    *novo = (simbolo){0};
     strcpy(novo->nome, nome);
     strcpy(novo->tipo, tipo);
     novo->escopo = escopo;
@@ -42,6 +42,15 @@ simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas
     novo->quantidadeParametros = 0;
     topo++;
     return novo;
+}
+
+void prepararRotulosDoBloco(char escopo, int quantidadeLocais) {
+    for (int i = topo - 1; i >= 0; i--) {
+        if (tabela_simbolos[i].escopo == escopo &&
+            tabela_simbolos[i].natureza == natureza_rotulo) {
+            tabela_simbolos[i].quantidadeLocais = quantidadeLocais;
+        }
+    }
 }
 
 void atribuirEnderecosParametros(char escopo) {
