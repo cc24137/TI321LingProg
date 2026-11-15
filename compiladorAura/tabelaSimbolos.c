@@ -40,6 +40,8 @@ simbolo *adicionaNaTabelaSimbolos(char *nome, char* tipo, char escopo, naturezas
     novo->tipoParametro = parametro_por_valor;
     novo->inicioParametros = -1;
     novo->quantidadeParametros = 0;
+    novo->quantidadePosicoesParametros = 0;
+    novo->assinatura = -1;
     topo++;
     return novo;
 }
@@ -54,12 +56,15 @@ void prepararRotulosDoBloco(char escopo, int quantidadeLocais) {
 }
 
 void atribuirEnderecosParametros(char escopo) {
-    // A lista acaba de ser inserida. O último parâmetro fica antes dos três
-    // campos de controle da chamada, no deslocamento -4.
-    int deslocamento = -4;
+    // Quatro campos de controle: o último argumento simples fica em -5.
+    int deslocamento = -5;
     for (int i = topo - 1; i >= 0 && tabela_simbolos[i].escopo == escopo; i--) {
-        if (tabela_simbolos[i].natureza == natureza_parametro) {
-            tabela_simbolos[i].endereco = deslocamento--;
+        simbolo *parametro = &tabela_simbolos[i];
+        if (parametro->natureza == natureza_parametro) {
+            int tamanho = parametro->tipoParametro == parametro_funcao ||
+                parametro->tipoParametro == parametro_procedimento ? 3 : 1;
+            parametro->endereco = deslocamento - (tamanho - 1);
+            deslocamento -= tamanho;
         }
     }
 }

@@ -106,9 +106,14 @@ typedef struct {
     naturezas natureza;
     int endereco;
     char escopo;
+    
     tiposParametro tipoParametro; // Usado quando a natureza é natureza_parametro.
     int inicioParametros;
     int quantidadeParametros;
+
+    int quantidadePosicoesParametros;
+    int assinatura;
+    
     char rotuloMEPA[128];
     int quantidadeLocais;
 } simbolo;
@@ -117,6 +122,17 @@ typedef struct {
     char tipo[100];
     char nomeFuncOuProc[100]; // o nome do proc/func desse parâmetro
     tiposParametro tipoParametro;
+
+    int assinatura; // Assinatura da rotina recebida; -1 para dados.
 } descricaoParametro;
+
+enum { MAX_PARAMETROS_ASSINATURA = 100 };
+
+typedef struct {
+    int inicioParametros;
+    int quantidadeParametros; // -1 enquanto nao se sabe a assinatura
+    int quantidadePosicoesParametros;
+    int vinculo; // Compartilha a assinatura ao repassar um parâmetro de rotina
+} assinaturaRotina;
 
 #endif
