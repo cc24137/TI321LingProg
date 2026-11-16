@@ -108,14 +108,19 @@ typedef struct {
     char escopo;
     
     tiposParametro tipoParametro; // Usado quando a natureza é natureza_parametro.
-    int inicioParametros;
-    int quantidadeParametros;
-
-    int quantidadePosicoesParametros;
-    int assinatura;
     
     char rotuloMEPA[128];
+    
+    // para rotinas
+    int quantidadeParametros;
+    int quantidadePosicoesParametros;
+    
+    // para label
     int quantidadeLocais;
+    
+    // indices em vetores auxiliares
+    int inicioParametros;
+    int assinatura;
 } simbolo;
 
 typedef struct {

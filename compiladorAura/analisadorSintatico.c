@@ -87,6 +87,7 @@ static void compilaChamada(FILE *arquivo, const simbolo *subrotina,
         printf("'%s' não é uma função ou procedimento.\n", subrotina->nome);
         exit(1);
     }
+
     if (ehRotinaEntradaSaida(subrotina)) {
         compilaChamadaEntradaSaida(arquivo, subrotina, token);
         return;
@@ -96,10 +97,13 @@ static void compilaChamada(FILE *arquivo, const simbolo *subrotina,
     if (chamadaDeFuncao) {
         emitirMEPA("AMEM 1");
     }
+
     assinaturaRotina assinatura = obtemAssinatura(subrotina->assinatura);
     int inferir = assinatura.quantidadeParametros < 0;
+
     descricaoParametro inferidos[MAX_PARAMETROS_ASSINATURA];
     int quantidadeArgumentos = 0;
+
     if (token.t == abreparenteses) {
         token = obterToken(arquivo);
         if (token.t != fechaparenteses) {
@@ -153,6 +157,7 @@ static void compilaChamada(FILE *arquivo, const simbolo *subrotina,
     else {
         emitirMEPA("CHPR %s, %d", subrotina->rotuloMEPA, escopo - 1);
     }
+
     if (chamadaDeFuncao && descartarResultado) {
         emitirMEPA("DMEM 1");
     }
@@ -174,18 +179,14 @@ static void registraParametroFormal(const char *nome, const descricaoParametro *
     parametro->assinatura = descricao->assinatura;
 }
 
-static int compilaListaParametros(FILE *arquivo, const char *nome,
-                                 int inserirSimbolos, int somenteValores, int assinatura) {
+static int compilaListaParametros(FILE *arquivo, const char *nome, int assinatura) {
     descricaoParametro parametros[MAX_PARAMETROS_ASSINATURA];
     int quantidade = 0;
     anaLexReturn token = obterToken(arquivo);
     if (token.t != abreparenteses) {
         devolverToken(token);
-        if (inserirSimbolos) {
-            definirAssinatura(assinatura, nome, parametros, 0);
-            return 0;
-        }
-        return -1; // Forma do livro: procedure h / function g: integer.
+        definirAssinatura(assinatura, nome, parametros, 0);
+        return 0;
     }
     token = obterToken(arquivo);
     if (token.t == fechaparenteses) {
@@ -196,76 +197,51 @@ static int compilaListaParametros(FILE *arquivo, const char *nome,
 
     do {
         token = obterToken(arquivo);
+        tiposParametro modo = parametro_por_valor;
         if (token.t == funcao || token.t == procedimento) {
-            if (somenteValores) {
-                printf("Uma rotina recebida deve ter somente parâmetros por valor.\n");
-                exit(1);
-            }
-            tiposParametro modo = token.t == funcao ? parametro_funcao : parametro_procedimento;
+            modo = token.t == funcao ? parametro_funcao : parametro_procedimento;
             token = obterToken(arquivo);
-            if (token.t != identificador || quantidade == MAX_PARAMETROS_ASSINATURA) {
+        }
+        else if (token.t == variavel) {
+            modo = parametro_por_referencia;
+            token = obterToken(arquivo);
+        }
+
+        char nomes[MAX_PARAMETROS_ASSINATURA][100];
+        int quantidadeNomes = 0;
+        do {
+            if (token.t != identificador || quantidade + quantidadeNomes == MAX_PARAMETROS_ASSINATURA) {
                 printf("Identificador inválido ou limite de parâmetros excedido.\n");
                 exit(1);
             }
-            char nomeParametro[100];
-            strcpy(nomeParametro, token.palavra);
-            descricaoParametro descricao = {0};
-            descricao.tipoParametro = modo;
-            descricao.assinatura = novaAssinatura();
-            compilaListaParametros(arquivo, nomeParametro, 0, 1, descricao.assinatura);
-            if (modo == parametro_funcao) {
-                token = obterToken(arquivo);
-                if (token.t != doispontos) {
-                    printf("Esperava-se ':' com o retorno da função recebida.\n");
-                    exit(1);
-                }
-                compilaTipoParametro(arquivo, descricao.tipo);
-            }
-            parametros[quantidade++] = descricao;
-            if (inserirSimbolos) {
-                registraParametroFormal(nomeParametro, &descricao);
+            strcpy(nomes[quantidadeNomes++], token.palavra);
+            token = obterToken(arquivo);
+            if (token.t != virgula) {
+                break;
             }
             token = obterToken(arquivo);
+        } while (1);
+
+        int ehRotina = modo == parametro_funcao || modo == parametro_procedimento;
+        if (ehRotina && token.t == abreparenteses) {
+            printf("Parâmetro de rotina deve usar a forma simplificada, sem lista interna.\n");
+            exit(1);
         }
-        else {
-            tiposParametro modo = parametro_por_valor;
-            if (token.t == variavel) {
-                if (somenteValores) {
-                    printf("Uma rotina recebida deve ter somente parâmetros por valor.\n");
-                    exit(1);
-                }
-                modo = parametro_por_referencia;
-                token = obterToken(arquivo);
-            }
-            char nomes[MAX_PARAMETROS_ASSINATURA][100];
-            int quantidadeNomes = 0;
-            do {
-                if (token.t != identificador || quantidade + quantidadeNomes == MAX_PARAMETROS_ASSINATURA) {
-                    printf("Identificador inválido ou limite de parâmetros excedido.\n");
-                    exit(1);
-                }
-                strcpy(nomes[quantidadeNomes++], token.palavra);
-                token = obterToken(arquivo);
-                if (token.t != virgula) {
-                    break;
-                }
-                token = obterToken(arquivo);
-            } while (1);
+        descricaoParametro descricao = {0};
+        descricao.tipoParametro = modo;
+        if (modo != parametro_procedimento) {
             if (token.t != doispontos) {
                 printf("Esperava-se ':' na declaração dos parâmetros.\n");
                 exit(1);
             }
-            descricaoParametro descricao = {0};
-            descricao.tipoParametro = modo;
-            descricao.assinatura = -1;
             compilaTipoParametro(arquivo, descricao.tipo);
-            for (int i = 0; i < quantidadeNomes; i++) {
-                parametros[quantidade++] = descricao;
-                if (inserirSimbolos) {
-                    registraParametroFormal(nomes[i], &descricao);
-                }
-            }
             token = obterToken(arquivo);
+        }
+        for (int i = 0; i < quantidadeNomes; i++) {
+            // Cada rotina recebida começa com sua própria assinatura desconhecida.
+            descricao.assinatura = ehRotina ? novaAssinatura() : -1;
+            parametros[quantidade++] = descricao;
+            registraParametroFormal(nomes[i], &descricao);
         }
     } while (token.t == pontoevirgula);
 
@@ -274,15 +250,13 @@ static int compilaListaParametros(FILE *arquivo, const char *nome,
         exit(1);
     }
     definirAssinatura(assinatura, nome, parametros, quantidade);
-    if (inserirSimbolos) {
-        atribuirEnderecosParametros(escopo);
-    }
+    atribuirEnderecosParametros(escopo);
     return quantidade;
 }
 
 int compilaParametrosFormais(FILE *arquivo, char *nomeFuncOuProc) {
     simbolo *subrotina = buscarNaTabelaSimbolos(nomeFuncOuProc);
-    int quantidade = compilaListaParametros(arquivo, nomeFuncOuProc, 1, 0, subrotina->assinatura);
+    int quantidade = compilaListaParametros(arquivo, nomeFuncOuProc, subrotina->assinatura);
     assinaturaRotina assinatura = obtemAssinatura(subrotina->assinatura);
     subrotina->inicioParametros = assinatura.inicioParametros;
     subrotina->quantidadeParametros = quantidade;
@@ -487,6 +461,7 @@ int compilaExpressao(FILE *arquivo) {
 
 void compilaParametroNaChamada(FILE *arquivo, const simbolo *subrotina, int posicao) {
     descricaoParametro descricao = obtemDescricao(subrotina, posicao);
+    
     if (descricao.tipoParametro == parametro_por_valor) {
         if (!compilaExpressao(arquivo)) {
             printf("O argumento precisa produzir um valor MEPA.\n");
@@ -520,6 +495,7 @@ void compilaParametroNaChamada(FILE *arquivo, const simbolo *subrotina, int posi
             printf("Rotina '%s' incompatível com o parâmetro esperado.\n", declaracao->nome);
             exit(1);
         }
+
         if (ehParametroRotina(declaracao)) {
             // repasse dos três componentes, mantendo o ambiente original
             for (int i = 0; i < 3; i++) {
